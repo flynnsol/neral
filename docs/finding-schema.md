@@ -46,6 +46,7 @@ Rules: REFUTED findings are dropped from the ranking and listed under "Dropped".
 | Ranked findings | Sorted by severity (P0 first), then confidence (high first). Excludes REFUTED |
 | Checks run | Ticket Acceptance, touches (changed files stay within the ticket's declared files), size limit. Each `pass` or `fail` |
 | Profile used | `quiet`, `standard` or `strict` |
+| Lenses | `run: <list>; skipped: <list with reason>`. Write `skipped: none` when every enabled lens ran |
 | Dropped | REFUTED findings with the verifier's reason |
 
 Verdict rule: `CHANGES NEEDED` if any P0 or P1 survives, or any check fails. `PASS WITH NOTES` if only P2/P3 findings survive. `PASS` if none survive and all checks pass.
@@ -68,6 +69,7 @@ Findings below the profile cutoff are not listed; they are omitted from counts a
 **Verdict:** CHANGES NEEDED
 **Merge-risk score:** 2/5 (5 = safest to merge)
 **Profile:** standard (P0-P2)
+**Lenses:** run: correctness, security, data-integrity, tests, performance, maintainability; skipped: none
 
 | P0 | P1 | P2 | P3 |
 |---|---|---|---|
