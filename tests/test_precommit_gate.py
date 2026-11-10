@@ -75,12 +75,55 @@ class PureFunctionsTest(unittest.TestCase):
 def git(cwd, *args):
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
+def opt_in(repo, text="profile: default\n"):
+    (Path(repo) / ".neral").mkdir(exist_ok=True)
+    (Path(repo) / ".neral/config.yml").write_text(text)
+
+def install_stub(repo):
+    (Path(repo) / ".git/hooks").mkdir(parents=True, exist_ok=True)
+    (Path(repo) / ".git/hooks/pre-commit").write_text("#!/bin/sh\n# neral-git-hook\nexit 0\n")
+
+class OptInTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name)
+        git(self.repo, "init", "-q")
+        (self.repo / "a.txt").write_text("hello\n")
+        git(self.repo, "add", "a.txt")
+        self.payload = {"tool_name": "Bash", "tool_input": {"command": "git commit -m x"}, "cwd": str(self.repo)}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_not_opted_in_allows(self):
+        self.assertFalse(gate.repo_opted_in(str(self.repo)))
+        self.assertIsNone(gate.decide(self.payload, {}))
+        (self.repo / ".git/hooks").mkdir(exist_ok=True)
+        (self.repo / ".git/hooks/pre-commit").write_text("#!/bin/sh\n# some other hook\n")
+        self.assertIsNone(gate.decide(self.payload, {}))
+
+    def test_config_opts_in(self):
+        opt_in(self.repo)
+        self.assertTrue(gate.repo_opted_in(str(self.repo)))
+        self.assertIn("Run neral:review", gate.decide(self.payload, {}))
+
+    def test_stub_opts_in(self):
+        install_stub(self.repo)
+        self.assertTrue(gate.repo_opted_in(str(self.repo)))
+        self.assertIn("Run neral:review", gate.decide(self.payload, {}))
+
+    def test_disabled_config_wins_over_stub(self):
+        install_stub(self.repo)
+        opt_in(self.repo, "precommit:\n  enabled: false\n")
+        self.assertIsNone(gate.decide(self.payload, {}))
+
 class DecideRealRepoTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self.tmp.name)
         git(self.repo, "init", "-q")
         (self.repo / "a.txt").write_text("hello\n")
+        opt_in(self.repo)
         self.env = {}
 
     def tearDown(self):
@@ -115,8 +158,7 @@ class DecideRealRepoTest(unittest.TestCase):
         wt = self.repo / ".claude/worktrees/x"
         wt.mkdir(parents=True)
         self.assertIsNone(gate.decide(self.payload(cwd=wt), self.env))
-        (self.repo / ".neral").mkdir()
-        (self.repo / ".neral/config.yml").write_text("precommit:\n  enabled: false\n")
+        opt_in(self.repo, "precommit:\n  enabled: false\n")
         self.assertIsNone(gate.decide(self.payload(), self.env))
 
     def test_git_dash_c_checks_target_repo(self):  # H3
@@ -125,6 +167,7 @@ class DecideRealRepoTest(unittest.TestCase):
         git(sub, "init", "-q")
         (sub / "b.txt").write_text("b\n")
         git(sub, "add", "b.txt")
+        install_stub(sub)  # the target repo opts in through its own git hook
         self.assertIsNone(gate.decide(self.payload(), self.env))  # cwd repo has nothing staged
         for cmd in ["git -C sub commit -m x", "git --git-dir=sub/.git --work-tree sub commit"]:
             self.assertIn("Run neral:review", gate.decide(self.payload(cmd), self.env), cmd)
@@ -164,7 +207,8 @@ class MainTest(unittest.TestCase):
             git(d, "init", "-q")
             Path(d, "f").write_text("x\n")
             git(d, "add", "f")
-            r = self.run_hook(json.dumps({"tool_name": "Bash", "tool_input": {"command": "git commit"}, "cwd": d}))
+            opt_in(d)
+            r =self.run_hook(json.dumps({"tool_name": "Bash", "tool_input": {"command": "git commit"}, "cwd": d}))
         out = json.loads(r.stdout)["hookSpecificOutput"]
         self.assertEqual(out["permissionDecision"], "deny")
         self.assertIn("Run neral:review", out["permissionDecisionReason"])

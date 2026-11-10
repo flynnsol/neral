@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Neral pre-commit gate (PreToolUse hook): deny `git commit` without a valid review stamp.
-See docs/review-stamp.md. Any error fails open (the commit is allowed)."""
+Only enforced in repos that opted in (see repo_opted_in). See docs/review-stamp.md.
+Any error fails open (the commit is allowed)."""
 import hashlib, json, os, re, subprocess, sys, threading  # noqa: E401
 from pathlib import Path
 
@@ -147,6 +148,19 @@ def check_stamp(stamp_text, digest, block_on):
 def git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, timeout=30)
 
+HOOK_MARKER = "# neral-git-hook"
+
+def repo_opted_in(top):
+    """True when the repo at `top` opted in to Neral: it has .neral/config.yml, or its
+    git pre-commit hook is the Neral stub (contains the marker line)."""
+    if Path(top, ".neral", "config.yml").is_file():
+        return True
+    out = git(top, "rev-parse", "--git-path", "hooks/pre-commit")
+    hook = Path(top, out.stdout.decode().strip())
+    if out.returncode != 0 or not hook.is_file():
+        return False
+    return HOOK_MARKER in hook.read_text(encoding="utf-8", errors="replace").splitlines()
+
 DIFF_ARGS = ("diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color")
 
 def staged_digest(cwd, git_opts=(), timeout=30):
@@ -188,8 +202,10 @@ def decide(payload, env):
         return None
     config = Path(top or cwd, ".neral", "config.yml")
     enabled, block_on = read_config(config.read_text(encoding="utf-8") if config.is_file() else "")
-    if not enabled or git(cwd, *opts, "diff", "--cached", "--quiet").returncode != 1:
-        return None  # disabled, nothing staged (0), or a git error (fail open)
+    if not enabled or not repo_opted_in(top or cwd):
+        return None  # disabled, or a repo that never opted in to Neral
+    if git(cwd, *opts, "diff", "--cached", "--quiet").returncode != 1:
+        return None  # nothing staged (0), or a git error (fail open)
     digest = staged_digest(cwd, opts)
     git_dir = git(cwd, *opts, "rev-parse", "--absolute-git-dir").stdout.decode().strip()
     stamp_path = Path(git_dir, "neral", "review-stamp.json")
