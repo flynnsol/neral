@@ -1,11 +1,12 @@
 # Neral config and learnings schema
 
-Neral reads two files from the `.neral/` directory at the repo root.
+Neral reads these files from the `.neral/` directory at the repo root.
 
 | File | Author | Purpose |
 |------|--------|---------|
 | `.neral/config.yml` | Human | Review settings. Template: `templates/config.yml` |
-| `.neral/learnings.md` | Neral, after human approval | Durable review rules learned from past findings |
+| `.neral/learnings.md` | Neral, after human approval | Approved review rules learned from past findings. Holds only `approved` entries |
+| `.neral/proposed.md` | Neral | Pending proposals awaiting human review. Never applied |
 
 ## Rules
 
@@ -14,7 +15,7 @@ Neral reads two files from the `.neral/` directory at the repo root.
 | Precedence | `config.yml` over `learnings.md`. On conflict, the config wins. |
 | Missing directory | If `.neral/` is missing, all defaults apply. |
 | Missing file or key | Each missing file or key falls back to its default. |
-| Approval | A learning is written only with status `approved`, after human approval. `proposed` learnings are held pending and never applied. |
+| Approval | `learnings.md` holds only `approved` entries, written after human approval. Pending proposals live in `proposed.md` and are never applied by the pipeline. |
 
 ## `.neral/config.yml`
 
@@ -80,15 +81,14 @@ A markdown list. Each entry is one top-level bullet with indented fields.
 | `path` | string | glob | optional; omitted means repo-wide |
 | `date` | string | `YYYY-MM-DD` | required |
 | `source` | string | id of the finding that prompted it | required |
-| `status` | string | `proposed`, `approved`, `rejected` | required; written as `approved` |
+| `status` | string | `approved` | required |
 
-| Status | Meaning |
-|--------|---------|
-| `proposed` | Held pending human review. Not applied. |
-| `approved` | Human approved. Applied to reviews. |
-| `rejected` | Human declined. Never applied. |
+| Status | File | Meaning |
+|--------|------|---------|
+| `approved` | `learnings.md` | Human approved. Applied to reviews. |
+| `proposed` | `proposed.md` | Held pending human review. Never applied. |
 
-Entries are written to the file only with status `approved`, after human approval. Proposed entries are held pending until a human decides.
+`learnings.md` stores only `approved` entries. Rejected proposals are deleted, not stored.
 
 ```markdown
 - Prefer early returns over nested conditionals in request handlers.
@@ -96,4 +96,21 @@ Entries are written to the file only with status `approved`, after human approva
   - date: 2026-11-09
   - source: F-0042
   - status: approved
+```
+
+## `.neral/proposed.md`
+
+Pending proposals. Same entry format as `learnings.md`, but each entry has `status: proposed`. The pipeline never applies these entries.
+
+| Event | Result |
+|-------|--------|
+| Human approves | The entry moves to `.neral/learnings.md` with `status: approved`. |
+| Human rejects | The entry is deleted. |
+
+```markdown
+- Prefer early returns over nested conditionals in request handlers.
+  - path: `src/api/**`
+  - date: 2026-11-09
+  - source: F-0042
+  - status: proposed
 ```
