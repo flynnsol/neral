@@ -30,6 +30,20 @@ YAML. All keys are optional.
 | `test_command` | string | any shell command | unset |
 | `lenses` | list of strings | `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability` | all six |
 | `fix_loop.max_rounds` | integer | `>= 1` | `3` |
+| `precommit` | object | see below | see below |
+
+### `precommit` block
+
+Settings for the pre-commit review gate. The gate checks the review stamp described in `docs/review-stamp.md`.
+
+| Key | Type | Allowed values | Default |
+|-----|------|----------------|---------|
+| `precommit.enabled` | boolean | `true`, `false` | `true` |
+| `precommit.profile` | string | `quiet`, `standard`, `strict` | `quiet` |
+| `precommit.lenses` | list of strings | `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability` | `correctness`, `security`, `data-integrity` |
+| `precommit.block_on` | string | `P0`, `P1`, `P2` | `P1` |
+
+`block_on`: the commit is denied when a surviving finding at this severity or worse exists, or a check fails. `precommit.profile` and `precommit.lenses` apply only to the pre-commit review; the top-level `profile` and `lenses` are unchanged.
 
 ### `path_instructions` entry
 
@@ -69,6 +83,11 @@ test_command: "npm test"
 lenses: [correctness, security]
 fix_loop:
   max_rounds: 2
+precommit:
+  enabled: true
+  profile: quiet
+  lenses: [correctness, security, data-integrity]
+  block_on: P1
 ```
 
 ## `.neral/learnings.md`
