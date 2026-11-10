@@ -6,6 +6,9 @@ from pathlib import Path
 
 REVIEW_MSG = "Run neral:review on the staged changes (staged mode) before committing."
 SEVERITIES = ("P0", "P1", "P2", "P3")
+BLOCK_ON = ("P0", "P1", "P2")
+VERDICTS = ("PASS", "PASS WITH NOTES", "CHANGES NEEDED")
+SHA256 = re.compile(r"[0-9a-f]{64}")
 TARGET_MSG = ("Could not tell which repository `git -C`/`--git-dir`/`--work-tree` points at. "
               "Run the commit from the repo directory instead.")
 FLAGS_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
@@ -117,7 +120,7 @@ def read_config(text):
             value = value.strip().strip("'\"")
             if key == "enabled":
                 enabled = value.lower() != "false"
-            elif key == "block_on" and value in SEVERITIES:
+            elif key == "block_on" and value in BLOCK_ON:
                 block_on = value
     return enabled, block_on
 
@@ -127,13 +130,15 @@ def check_stamp(stamp_text, digest, block_on):
         stamp = json.loads(stamp_text) if stamp_text is not None else None
     except ValueError:
         stamp = None
-    if not isinstance(stamp, dict) or "diff_sha256" not in stamp:
+    if (not isinstance(stamp, dict) or "worst_severity" not in stamp
+            or stamp.get("verdict") not in VERDICTS
+            or not (stamp["worst_severity"] is None or stamp["worst_severity"] in SEVERITIES)
+            or not isinstance(stamp.get("diff_sha256"), str) or not SHA256.fullmatch(stamp["diff_sha256"])):
         return REVIEW_MSG
-    if stamp.get("diff_sha256") != digest:
+    if stamp["diff_sha256"] != digest:
         return "The staged diff changed since it was reviewed. " + REVIEW_MSG
-    worst, verdict = stamp.get("worst_severity"), stamp.get("verdict")
-    blocking = worst is not None and (worst not in SEVERITIES
-                                      or SEVERITIES.index(worst) <= SEVERITIES.index(block_on))
+    worst, verdict = stamp["worst_severity"], stamp["verdict"]
+    blocking = worst is not None and SEVERITIES.index(worst) <= SEVERITIES.index(block_on)
     if blocking or verdict == "CHANGES NEEDED":
         return (f"The review found blocking issues (worst severity {worst}, verdict {verdict}). "
                 "Fix them, restage and re-review with neral:review before committing.")
