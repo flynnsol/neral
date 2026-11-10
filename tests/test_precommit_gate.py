@@ -112,6 +112,45 @@ class OptInTest(unittest.TestCase):
         self.assertTrue(gate.repo_opted_in(str(self.repo)))
         self.assertIn("Run neral:review", gate.decide(self.payload, {}))
 
+    def explicit_target(self):
+        other = Path(self.tmp.name, "b")  # unrelated cwd repo B; self.repo/"a" is the target A
+        target = self.repo / "a"
+        for d in (other, target):
+            d.mkdir()
+            git(d, "init", "-q")
+        (target / "f.txt").write_text("f\n")
+        git(target, "add", "f.txt")
+        return target, dict(self.payload, cwd=str(other))
+
+    def test_explicit_target_with_stub_is_denied(self):  # F-1 (a), (b)
+        target, payload = self.explicit_target()
+        install_stub(target)
+        for cmd in [f"git --git-dir={target}/.git commit -m x",
+                    f"git --git-dir={target}/.git --work-tree={target} commit -m x"]:
+            with self.subTest(cmd=cmd):
+                p = dict(payload, tool_input={"command": cmd})
+                self.assertIn("Run neral:review", gate.decide(p, {}))
+
+    def test_dash_c_target_with_config_is_denied(self):  # F-1 (c)
+        target, payload = self.explicit_target()
+        opt_in(target)
+        p = dict(payload, tool_input={"command": f"git -C {target} commit -m x"})
+        self.assertIn("Run neral:review", gate.decide(p, {}))
+
+    def test_explicit_target_with_foreign_hook_is_allowed(self):  # F-1 (d)
+        target, payload = self.explicit_target()
+        (target / ".git/hooks").mkdir(exist_ok=True)
+        (target / ".git/hooks/pre-commit").write_text("#!/bin/sh\n# some other hook\n")
+        for cmd in [f"git --git-dir={target}/.git commit -m x", f"git -C {target} commit -m x"]:
+            with self.subTest(cmd=cmd):
+                self.assertIsNone(gate.decide(dict(payload, tool_input={"command": cmd}), {}))
+
+    def test_unreadable_hook_counts_as_opted_in(self):  # F-2
+        (self.repo / ".git/hooks").mkdir(exist_ok=True)
+        (self.repo / ".git/hooks/pre-commit").mkdir()  # exists but cannot be read as a file
+        self.assertTrue(gate.repo_opted_in(str(self.repo)))
+        self.assertIn("Run neral:review", gate.decide(self.payload, {}))
+
     def test_disabled_config_wins_over_stub(self):
         install_stub(self.repo)
         opt_in(self.repo, "precommit:\n  enabled: false\n")
