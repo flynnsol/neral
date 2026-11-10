@@ -1,0 +1,17 @@
+{
+  "description": "Neral pre-commit gate: git commit needs a valid review stamp",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/precommit_gate.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
