@@ -1,7 +1,7 @@
 ---
 description: Show or change Neral review settings in .neral/config.yml and manage learned rules
 argument-hint: [profile <quiet|standard|strict> | rule "<glob>: <text>" | check "<rule>" | ignore <glob> | lenses <list> | test <cmd> | rounds <n> | precommit <on|off> | precommit profile <quiet|standard|strict> | precommit lenses <list> | precommit block <P0|P1|P2> | precommit install | precommit uninstall | learnings | init | free-form request]
-allowed-tools: Read, Edit, Write, Glob, Grep, Bash(mkdir:*), Bash(diff:*), Bash(git ls-files:*), Bash(python3:*)
+allowed-tools: Read, Edit, Write, Glob, Grep, Bash(mkdir:*), Bash(diff:*), Bash(git ls-files:*), Bash(python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py":*)
 ---
 
 # /neral:config
@@ -60,8 +60,9 @@ Run these from the repository root (the repo the user is working in). They do no
 1. `precommit install`: run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" install` and show its output. It writes a small `pre-commit` stub in the repo's hooks directory (respecting `core.hooksPath` and linked worktrees) that runs `hooks/git_pre_commit.py`.
 2. `precommit uninstall`: run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" uninstall` and show its output. It removes the hook only if it is the Neral stub.
 3. Explain after installing: the hook enforces the review stamp for every commit form (`commit -a`, paths, chained `add` and `commit`, terminal commits); `git commit --no-verify` skips it; set `NERAL_REVIEW=off` to bypass it for a session.
-4. A `pre-commit` hook that is not Neral's is never overwritten. If the installer refuses (exit code 2), show its message and the line it suggests for chaining by hand; do not edit the foreign hook yourself.
-5. The stub warns and allows the commit when the plugin script has moved (for example after a plugin update); re-run `precommit install` to refresh the path.
+4. A `pre-commit` hook that is not Neral's is never overwritten. If the installer refuses (exit code 2), show its message and the line it suggests for chaining by hand; do not edit the foreign hook yourself. It also refuses a `pre-commit` path that is a symlink (even a dangling one) and never follows it.
+5. If the hooks directory is outside the repository (for example an absolute, shared `core.hooksPath`), `install` and `uninstall` refuse (exit code 2) and name that directory, because the change would affect every repo using it. Show the message and ask the user; only after an explicit yes, re-run the same command with `--allow-shared-hooks-dir`. `status` just reports the directory.
+6. The stub warns and allows the commit when the plugin script has moved (for example after a plugin update); re-run `precommit install` to refresh the path.
 
 ## `learnings`
 

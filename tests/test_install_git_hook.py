@@ -90,5 +90,76 @@ class InstallGitHookTest(unittest.TestCase):
         self.assertIn("# neral-git-hook", (self.repo / "myhooks" / "pre-commit").read_text())
         self.assertFalse(self.hook.exists())
 
+    def test_symlink_hook_refused_and_target_untouched(self):
+        self.hook.parent.mkdir(parents=True, exist_ok=True)
+        target = Path(self.tmp.name, "target")
+        self.hook.symlink_to(target)
+        r = self.run_installer("install")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("symlink", r.stdout + r.stderr)
+        self.assertTrue(self.hook.is_symlink())
+        self.assertFalse(os.path.lexists(target))
+        target.write_text("#!/bin/sh\n# neral-git-hook\n")
+        for action in ("install", "uninstall"):
+            r = self.run_installer(action)
+            self.assertEqual(r.returncode, 2, action)
+            self.assertNotIn("Traceback", r.stderr)
+            self.assertTrue(self.hook.is_symlink())
+            self.assertEqual(target.read_text(), "#!/bin/sh\n# neral-git-hook\n")
+
+    def test_install_leaves_no_temp_files(self):
+        self.run_installer("install")
+        self.assertEqual(sorted(p.name for p in self.hook.parent.iterdir() if not p.name.endswith(".sample")), ["pre-commit"])
+
+    def test_shared_hooks_dir_refused_without_flag(self):
+        shared = Path(self.tmp.name, "shared")
+        git(self.repo, "config", "core.hooksPath", str(shared), env=self.env)
+        for action in ("install", "uninstall"):
+            r = self.run_installer(action)
+            self.assertEqual(r.returncode, 2, action)
+            self.assertIn(str(shared), r.stdout + r.stderr)
+            self.assertIn("--allow-shared-hooks-dir", r.stdout + r.stderr)
+        self.assertFalse(os.path.lexists(shared / "pre-commit"))
+        r = self.run_installer("status")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn(str(shared), r.stdout)
+        r = self.run_installer("install", "--allow-shared-hooks-dir")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("# neral-git-hook", (shared / "pre-commit").read_text())
+        self.assertEqual(self.run_installer("uninstall").returncode, 2)
+        self.assertTrue((shared / "pre-commit").exists())
+        self.assertEqual(self.run_installer("uninstall", "--allow-shared-hooks-dir").returncode, 0)
+        self.assertFalse((shared / "pre-commit").exists())
+
+    def test_nonexistent_repo_clean_message(self):
+        self.repo = Path(self.tmp.name, "missing")
+        r = self.run_installer("status")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(f"neral: not a git repository: {self.repo}", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_bare_repository(self):
+        self.repo = Path(self.tmp.name, "bare.git")
+        git(self.tmp.name, "init", "-q", "--bare", str(self.repo), env=self.env)
+        git(self.repo, "config", "core.hooksPath", "hooks", env=self.env)
+        r = self.run_installer("install")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertIn("# neral-git-hook", (self.repo / "hooks" / "pre-commit").read_text())
+        r = self.run_installer("status")
+        self.assertIn("bare repository", r.stdout)
+        self.assertNotIn("not installed", r.stdout)
+        self.assertEqual(self.run_installer("uninstall").returncode, 0)
+        self.assertFalse((self.repo / "hooks" / "pre-commit").exists())
+
+class ConfigCommandTest(unittest.TestCase):
+    def test_allowed_tools_scoped_to_installer(self):
+        text = (ROOT / "commands" / "config.md").read_text()
+        front = text.split("---\n")[1]
+        line = next(l for l in front.splitlines() if l.startswith("allowed-tools:"))  # noqa: E741
+        tools = [t.strip() for t in line.split(":", 1)[1].split(",")]
+        self.assertNotIn("Bash(python3:*)", tools)
+        self.assertIn('Bash(python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py":*)', tools)
+
 if __name__ == "__main__":
     unittest.main()
