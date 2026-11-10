@@ -43,7 +43,7 @@ Read `.neral/config.yml` and `.neral/learnings.md` if present. Print a short tab
 
 Source is `default` (key absent, default from the schema), `.neral/config.yml`, or `learned from .neral/learnings.md` (a learned rule applies to that key and the config does not override it). Summarize long lists by count. End with the number of approved learnings (entries in `learnings.md`) and pending proposals (entries in `.neral/proposed.md`). A missing file counts as 0.
 
-Then show the `precommit` block the same way, one row per key (`precommit.enabled`, `precommit.profile`, `precommit.lenses`, `precommit.block_on`) with its value and source (`default` or `.neral/config.yml`). Below it, one line: `Pre-commit gate: on` when `precommit.enabled` is `true`, otherwise `Pre-commit gate: off`. Then one more line from `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" status`: `Git hook: installed` or `Git hook: not installed`. Add two notes: `NERAL_REVIEW=off` bypasses the gate for a session, and the Claude Code hook only covers commits Claude makes; install the git hook (`precommit install`) to enforce the review for every commit, terminal commits included. See `docs/review-stamp.md`.
+Then show the `precommit` block the same way, one row per key (`precommit.enabled`, `precommit.profile`, `precommit.lenses`, `precommit.block_on`) with its value and source (`default` or `.neral/config.yml`). Below it, one line: `Pre-commit gate: on` when `precommit.enabled` is `true`, otherwise `Pre-commit gate: off`. Then one more line from `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" status`: `Git hook: installed` or `Git hook: not installed`. Add two notes: `NERAL_REVIEW=off` bypasses the gate for a session, and the Claude Code hook only covers commits Claude makes; install the git hook (`precommit install`) to enforce the review for every commit, terminal commits included. See `docs/review-stamp.md`. Also note when the gate is on: only in repos that opted in, meaning a repo with `.neral/config.yml` (and the gate not disabled) or with the Neral git hook installed. A repo with neither is never gated, by either the git hook or the Claude Code hook.
 
 ## Rules for every write
 
@@ -75,9 +75,14 @@ Run these from the repository root (the repo the user is working in). They do no
 
 ## `init`
 
-1. If `.neral/config.yml` already exists, say so and stop. Suggest the other subcommands.
+1. If `.neral/config.yml` already exists, say so and do not create it again. Run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" status` from the repository root. If the git hook is installed, say so and stop. If it is not installed, say so and offer to install it as in step 4. Suggest the other subcommands.
 2. Ask three questions: the profile (`quiet`, `standard` or `strict`; default `standard`), the test command (optional), and paths to ignore (optional globs, added to the default ignore list).
 3. Validate the answers. Create `.neral/` and `.neral/config.yml` from `templates/config.yml`, applying the answers in place. Show the resulting file as a diff against the template and get a yes before writing.
+4. After the config is written (after that yes), ask whether to install the git pre-commit hook now, and recommend yes. This is a separate yes. Explain in two sentences: the hook enforces the review stamp for every commit form, terminal commits included, and `git commit --no-verify` skips it. Remove it later with `/neral:config precommit uninstall`.
+   - On yes: run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" install` from the repository root, exactly as the `precommit install` section describes (including its refusal and shared hooks directory rules), and show its output.
+   - On no: say it can be installed later with `/neral:config precommit install`.
+
+When the gate is on: the pre-commit gate applies only to repos that opted in, meaning a repo with `.neral/config.yml` (and the gate not disabled) or with the Neral git hook installed. A repo with neither is never gated, by either the git hook or the Claude Code hook.
 
 ## Free-form English
 
