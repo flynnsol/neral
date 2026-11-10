@@ -14,6 +14,10 @@ Build one compact pack that every later step uses. Gather each source below, the
 | Learnings | `.neral/learnings.md`: entries with `status: approved` whose `path` matches a changed path (or that have no `path`). Skip `proposed` and `rejected`. |
 | Ticket | If a ticket exists, include its text, `touches` and Acceptance. Skip if none. |
 
+## Staged mode
+
+In staged mode (see [SKILL.md](SKILL.md)) gather the diff with `git diff --cached` and the changed files with `git diff --cached --name-only`, instead of the `<base>...HEAD` range. Gather callers and related tests as usual. The ticket is optional: include it if one is given, otherwise skip it. Read `profile` and `lenses` from the `precommit` block, not the top-level keys.
+
 ## Rules
 
 - Apply the `ignore` globs first: drop every matching file from the changed-file list, the diff and the other sources.

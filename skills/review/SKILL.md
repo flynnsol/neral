@@ -22,10 +22,21 @@ Follow the steps in order. Each step lives in its own file in this folder.
 2. **Deterministic gate**: run tests, linters and type checks before any model pass and pass their output on as hints. See [gate.md](gate.md).
 3. **Parallel lens passes**: launch one `reviewer` per lens in parallel on the context pack. See [passes.md](passes.md).
 4. **Verify, score and report**: launch `verifier` (and `tester` where a finding needs a failing test) on each finding, then score and write the report. See [verify.md](verify.md) and [report.md](report.md).
-5. **Fix loop**: hand confirmed findings to `engineer`, then re-check, up to `fix_loop.max_rounds`. See [fix-loop.md](fix-loop.md).
+5. **Fix loop**: hand confirmed findings to `engineer`, then re-check, up to `fix_loop.max_rounds`. Skipped in staged mode. See [fix-loop.md](fix-loop.md).
 6. **Learnings proposals**: propose durable rules from confirmed findings for human approval. See [learnings.md](learnings.md).
+
+## Staged mode
+
+Use staged mode when the user or the pre-commit gate asks to review staged changes before a commit. It runs the same pipeline with these differences:
+
+- **Diff source**: `git diff --cached` (the staged changes), not a branch range. See [context-pack.md](context-pack.md).
+- **Settings**: profile, lenses and severity cutoff come from the `precommit` block in `.neral/config.yml`, not the top-level `profile` and `lenses` keys. Defaults: profile `quiet`; lenses `correctness`, `security`, `data-integrity`; `block_on: P1`. `precommit.lenses` is the enabled lens set for step 3, and `precommit.profile` sets the cutoff in step 4.
+- **No fix loop**: staged mode never runs the fix loop (step 5). Report the findings and stop. The user or engineer fixes them, restages, and asks for a new review.
+- **Verification**: runs as normal (step 4).
+- **Stamp**: the review ends by writing the review stamp `.git/neral/review-stamp.json`. See [report.md](report.md) (Stamp section) and `docs/review-stamp.md`.
 
 ## References
 
 - `docs/finding-schema.md`: finding record and report format.
 - `docs/config-schema.md`: `.neral/config.yml` and `.neral/learnings.md`.
+- `docs/review-stamp.md`: review stamp fields, hash command and validity rule.
