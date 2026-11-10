@@ -31,6 +31,25 @@ On older versions, add the marketplace first, then install the plugin:
 /plugin install neral@neral
 ```
 
+## Set up a repo
+
+Installing the plugin alone changes nothing in a repo: no config, no git hook and no gate. Run this once in each repo you want Neral to review:
+
+```text
+/neral:config init
+```
+
+It asks for a profile, a test command and paths to ignore, then writes `.neral/config.yml`. It then offers to install the git pre-commit hook. Say yes (recommended): the hook enforces the review stamp for every commit form. This is what turns the [Pre-commit gate](#pre-commit-gate) on for that repo.
+
+Git hooks are not versioned, so each fresh clone needs the hook installed again with `/neral:config precommit install`.
+
+First run:
+
+1. Install the plugin.
+2. Run `/neral:config init` in your repo.
+3. Ask Claude to review a diff or ticket (`neral:review`).
+4. Commit. The gate requires a staged-mode review stamp, so ask Claude to review the staged changes first.
+
 ## Agents
 
 | Agent | Model | Tools | What it does |
@@ -83,7 +102,7 @@ Change settings with `/neral:config`. Every write shows a diff and waits for a y
 | Command | Effect |
 | ------- | ------ |
 | `/neral:config` | Show the effective config and where each value comes from |
-| `/neral:config init` | Create `.neral/config.yml` from the template |
+| `/neral:config init` | Create `.neral/config.yml` from the template and offer to install the git pre-commit hook |
 | `/neral:config profile <quiet\|standard\|strict>` | Set the profile |
 | `/neral:config lenses <list>` | Set the enabled lenses |
 | `/neral:config rule "<glob>: <text>"` | Add a path instruction |
