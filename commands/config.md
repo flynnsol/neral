@@ -1,6 +1,6 @@
 ---
 description: Show or change Neral review settings in .neral/config.yml and manage learned rules
-argument-hint: [profile <quiet|standard|strict> | rule "<glob>: <text>" | check "<rule>" | ignore <glob> | lenses <list> | test <cmd> | rounds <n> | learnings | init | free-form request]
+argument-hint: [profile <quiet|standard|strict> | rule "<glob>: <text>" | check "<rule>" | ignore <glob> | lenses <list> | test <cmd> | rounds <n> | precommit <on|off> | precommit profile <quiet|standard|strict> | precommit lenses <list> | precommit block <P0|P1|P2> | learnings | init | free-form request]
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash(mkdir:*), Bash(diff:*), Bash(git ls-files:*)
 ---
 
@@ -24,6 +24,11 @@ Match the first word. If nothing matches and there are arguments, treat them as 
 | `lenses <list>` | Set `lenses` (comma or space separated) |
 | `test <command>` | Set `test_command` |
 | `rounds <n>` | Set `fix_loop.max_rounds` |
+| `precommit on` | Set `precommit.enabled: true` |
+| `precommit off` | Set `precommit.enabled: false` |
+| `precommit profile <quiet\|standard\|strict>` | Set `precommit.profile` |
+| `precommit lenses <list>` | Set `precommit.lenses` (comma or space separated) |
+| `precommit block <P0\|P1\|P2>` | Set `precommit.block_on` |
 | `learnings` | Review pending proposals |
 | `init` | Create `.neral/config.yml` |
 
@@ -36,10 +41,12 @@ Read `.neral/config.yml` and `.neral/learnings.md` if present. Print a short tab
 
 Source is `default` (key absent, default from the schema), `.neral/config.yml`, or `learned from .neral/learnings.md` (a learned rule applies to that key and the config does not override it). Summarize long lists by count. End with the number of approved learnings (entries in `learnings.md`) and pending proposals (entries in `.neral/proposed.md`). A missing file counts as 0.
 
+Then show the `precommit` block the same way, one row per key (`precommit.enabled`, `precommit.profile`, `precommit.lenses`, `precommit.block_on`) with its value and source (`default` or `.neral/config.yml`). Below it, one line: `Pre-commit gate: on` when `precommit.enabled` is `true`, otherwise `Pre-commit gate: off`. Add two notes: `NERAL_REVIEW=off` bypasses the gate for a session, and the gate only covers commits Claude makes (commits made outside Claude are not checked). See `docs/review-stamp.md`.
+
 ## Rules for every write
 
-1. Validate against `docs/config-schema.md`. Reject an invalid value and list the allowed options, for example: `profile must be one of: quiet, standard, strict`. Checks: `profile` enum; `lenses` each one of `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability`; `rounds` an integer >= 1; `rule` needs a glob and non-empty instructions; `check` names are unique; `ignore` entries are globs. Write nothing on failure.
-2. Edit the YAML in place. Preserve every existing comment and the key order. Change only the targeted key. Do not reformat or regenerate the file. A commented-out example (such as `# test_command:`) stays; add the real key beside it.
+1. Validate against `docs/config-schema.md`. Reject an invalid value and list the allowed options, for example: `profile must be one of: quiet, standard, strict`. Checks: `profile` enum; `lenses` each one of `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability`; `rounds` an integer >= 1; `precommit` takes `on` or `off` (`precommit must be one of: on, off, profile, lenses, block`); `precommit profile` one of `quiet`, `standard`, `strict` (`precommit.profile must be one of: quiet, standard, strict`); `precommit lenses` each one of `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability` (`precommit.lenses must each be one of: correctness, security, data-integrity, tests, performance, maintainability`); `precommit block` one of `P0`, `P1`, `P2` (`precommit.block_on must be one of: P0, P1, P2`); `rule` needs a glob and non-empty instructions; `check` names are unique; `ignore` entries are globs. Write nothing on failure.
+2. Edit the YAML in place. Preserve every existing comment and the key order. Change only the targeted key. For `precommit` subcommands, change only the matching key inside the `precommit:` block; if the block is missing, add it with only that key. Do not reformat or regenerate the file. A commented-out example (such as `# test_command:`) stays; add the real key beside it.
 3. Show a unified diff of the change and ask for a yes. Write only after an explicit yes.
 4. Create `.neral/` if it is missing. If `config.yml` is missing, create it from `templates/config.yml` as part of the same diff.
 5. Never touch anything outside `.neral/`.
