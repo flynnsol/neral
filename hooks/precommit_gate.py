@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Neral pre-commit gate (PreToolUse hook): deny `git commit` without a valid review stamp.
-See docs/review-stamp.md. Any error fails open (the commit is allowed)."""
+Only enforced in repos that opted in (see repo_opted_in). See docs/review-stamp.md.
+Any error fails open (the commit is allowed)."""
 import hashlib, json, os, re, subprocess, sys, threading  # noqa: E401
 from pathlib import Path
 
@@ -147,6 +148,26 @@ def check_stamp(stamp_text, digest, block_on):
 def git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, timeout=30)
 
+HOOK_MARKER = "# neral-git-hook"
+
+def repo_opted_in(top, cwd=None, opts=()):
+    """True when the target repo opted in to Neral: its work tree `top` has .neral/config.yml,
+    or its git pre-commit hook is the Neral stub (contains the marker line). The hook is found
+    with the same target options as the commit. An unknown target or unreadable hook counts
+    as opted in, since not opted in means the commit is allowed."""
+    if top and Path(top, ".neral", "config.yml").is_file():
+        return True
+    out = git(cwd or top, *opts, "rev-parse", "--path-format=absolute", "--git-path", "hooks/pre-commit")
+    path = out.stdout.decode().strip()
+    if out.returncode != 0 or not path:
+        return True
+    if not os.path.lexists(path):
+        return False
+    try:
+        return HOOK_MARKER in Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return True
+
 DIFF_ARGS = ("diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color")
 
 def staged_digest(cwd, git_opts=(), timeout=30):
@@ -188,8 +209,10 @@ def decide(payload, env):
         return None
     config = Path(top or cwd, ".neral", "config.yml")
     enabled, block_on = read_config(config.read_text(encoding="utf-8") if config.is_file() else "")
-    if not enabled or git(cwd, *opts, "diff", "--cached", "--quiet").returncode != 1:
-        return None  # disabled, nothing staged (0), or a git error (fail open)
+    if not enabled or not repo_opted_in(top, cwd, opts):
+        return None  # disabled, or a repo that never opted in to Neral
+    if git(cwd, *opts, "diff", "--cached", "--quiet").returncode != 1:
+        return None  # nothing staged (0), or a git error (fail open)
     digest = staged_digest(cwd, opts)
     git_dir = git(cwd, *opts, "rev-parse", "--absolute-git-dir").stdout.decode().strip()
     stamp_path = Path(git_dir, "neral", "review-stamp.json")
