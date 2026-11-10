@@ -23,10 +23,11 @@ In staged mode (see [SKILL.md](SKILL.md)), the enabled set comes from `precommit
 With profile `quiet` or `standard`, cut the lens set to fit small changes:
 
 - **Docs-only**: when every changed file is documentation (`*.md` or under `docs/`, with no code or config), run only the `correctness` lens.
-- **Tiny diff**: when the whole diff is under 20 changed lines in 1 file, run `correctness` plus any enabled lens whose subject the diff clearly touches: `security` for auth, input handling or secrets; `data-integrity` for schemas, migrations or serialization.
+- **Tiny diff**: when the whole diff is under 20 changed lines (added plus removed lines) in 1 file, run `correctness` plus any other enabled lens whose subject the diff clearly touches (for example `security` for auth, input handling or secrets; `data-integrity` for schemas, migrations or serialization; `tests` for test files).
 - Profile `strict` ignores this rule and always runs every enabled lens.
+- This rule does not apply in staged mode: there, `precommit.lenses` is used exactly as configured.
 
-Record the lenses skipped by this rule in the lens note of the output.
+Record the lenses run and the lenses skipped by this rule, with the reason, in the `**Lenses:**` line of the report ([report.md](report.md), section 6).
 
 ## Launch
 

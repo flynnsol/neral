@@ -44,7 +44,7 @@ Sort findings by severity (P0 first), then confidence (high first). Renumber the
 
 ## 6. Write the report
 
-Use this shape: an H1 `# Review: <ticket id and title, or branch>`; the lines `**Verdict:**`, `**Merge-risk score:** N/5 (5 = safest to merge)` and `**Profile:** <profile> (<cutoff>)`; a counts table (P0, P1, P2, P3); `## Checks run` (Check, Result); `## Findings` (table with `# | ID | Severity | Confidence | Category | Location | Claim | Verdict`), then one `### <id>` block per finding with `- Evidence:` and `- Fix:`; `## Dropped` (ID, Claim, Verdict, Reason). With no findings or drops, write `None.` under that heading.
+Use this shape: an H1 `# Review: <ticket id and title, or branch>`; the lines `**Verdict:**`, `**Merge-risk score:** N/5 (5 = safest to merge)` and `**Profile:** <profile> (<cutoff>)`, then `**Lenses:** run: <list>; skipped: <list with reason>` (write `skipped: none` when every enabled lens ran); a counts table (P0, P1, P2, P3); `## Checks run` (Check, Result); `## Findings` (table with `# | ID | Severity | Confidence | Category | Location | Claim | Verdict`), then one `### <id>` block per finding with `- Evidence:` and `- Fix:`; `## Dropped` (ID, Claim, Verdict, Reason). With no findings or drops, write `None.` under that heading.
 
 ## 7. Fix briefs
 
