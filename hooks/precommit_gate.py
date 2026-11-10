@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Neral pre-commit gate (PreToolUse hook): deny `git commit` without a valid review stamp.
 See docs/review-stamp.md. Any error fails open (the commit is allowed)."""
-import hashlib, json, os, re, subprocess, sys  # noqa: E401
+import hashlib, json, os, re, subprocess, sys, threading  # noqa: E401
 from pathlib import Path
 
 REVIEW_MSG = "Run neral:review on the staged changes (staged mode) before committing."
@@ -147,6 +147,29 @@ def check_stamp(stamp_text, digest, block_on):
 def git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, timeout=30)
 
+DIFF_ARGS = ("diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color")
+
+def staged_digest(cwd, git_opts=(), timeout=30):
+    """sha256 of the staged diff, streamed from git. Raises on a git error or timeout.
+    External diff drivers, textconv and colour are turned off so the bytes are deterministic."""
+    h = hashlib.sha256()
+    with subprocess.Popen(["git", *git_opts, *DIFF_ARGS], cwd=cwd, stdout=subprocess.PIPE,
+                          stderr=subprocess.DEVNULL) as proc:
+        killed = threading.Event()
+        timer = threading.Timer(timeout, lambda: (killed.set(), proc.kill()))
+        timer.start()
+        try:
+            for chunk in iter(lambda: proc.stdout.read(65536), b""):
+                h.update(chunk)
+            code = proc.wait()
+        finally:
+            timer.cancel()
+    if killed.is_set():
+        raise subprocess.TimeoutExpired(proc.args, timeout)
+    if code != 0:
+        raise RuntimeError(f"git diff failed with exit code {code}")
+    return h.hexdigest()
+
 def decide(payload, env):
     """Return a deny reason for this hook payload, or None to allow."""
     command = (payload.get("tool_input") or {}).get("command", "")
@@ -167,11 +190,11 @@ def decide(payload, env):
     enabled, block_on = read_config(config.read_text(encoding="utf-8") if config.is_file() else "")
     if not enabled or git(cwd, *opts, "diff", "--cached", "--quiet").returncode != 1:
         return None  # disabled, nothing staged (0), or a git error (fail open)
-    diff = git(cwd, *opts, "diff", "--cached")
+    digest = staged_digest(cwd, opts)
     git_dir = git(cwd, *opts, "rev-parse", "--absolute-git-dir").stdout.decode().strip()
     stamp_path = Path(git_dir, "neral", "review-stamp.json")
     stamp_text = stamp_path.read_text(encoding="utf-8") if stamp_path.is_file() else None
-    return check_stamp(stamp_text, hashlib.sha256(diff.stdout).hexdigest(), block_on)
+    return check_stamp(stamp_text, digest, block_on)
 
 def main():
     try:

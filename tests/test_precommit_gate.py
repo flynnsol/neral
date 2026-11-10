@@ -135,6 +135,20 @@ class DecideRealRepoTest(unittest.TestCase):
         (sub / ".git/neral/review-stamp.json").write_text(stamp(diff_sha256=hashlib.sha256(out).hexdigest()))
         self.assertIsNone(gate.decide(self.payload("git -C sub commit -m x"), self.env))
 
+    def test_staged_digest_ignores_textconv_and_color(self):
+        git(self.repo, "add", "a.txt")
+        plain = subprocess.run(["git", "diff", "--cached"], cwd=self.repo, capture_output=True).stdout
+        self.assertEqual(gate.staged_digest(self.repo), hashlib.sha256(plain).hexdigest())
+        (self.repo / ".git/info").mkdir(exist_ok=True)
+        (self.repo / ".git/info/attributes").write_text("*.txt diff=up\n")
+        git(self.repo, "config", "diff.up.textconv", "tr a-z A-Z")
+        git(self.repo, "config", "color.ui", "always")
+        git(self.repo, "config", "diff.external", "false")
+        conv = subprocess.run(["git", "diff", "--cached", "--no-ext-diff"], cwd=self.repo, capture_output=True).stdout
+        self.assertNotEqual(conv, plain)  # the config really changes plain `git diff` output
+        self.assertEqual(gate.staged_digest(self.repo), hashlib.sha256(plain).hexdigest())
+        self.assertEqual(gate.staged_digest(self.repo.parent, ("-C", str(self.repo))), hashlib.sha256(plain).hexdigest())
+
 class MainTest(unittest.TestCase):
     def run_hook(self, stdin):
         return subprocess.run([sys.executable, str(ROOT / "hooks/precommit_gate.py")], input=stdin,
