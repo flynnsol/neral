@@ -16,6 +16,8 @@ The six lenses are `correctness`, `security`, `data-integrity`, `tests`, `perfor
 2. Profile `quiet`: run only `correctness`, `security` and `data-integrity` (the enabled lenses among them).
 3. Profile `standard` and `strict`: run every enabled lens.
 
+In staged mode (see [SKILL.md](SKILL.md)), the enabled set comes from `precommit.lenses` and the profile from `precommit.profile`, not the top-level `lenses` and `profile` keys. Defaults: lenses `correctness`, `security`, `data-integrity`; profile `quiet`.
+
 ## Launch
 
 Launch ONE `reviewer` subagent per lens, all in a SINGLE message with several Agent calls, so they run in parallel. Never launch them one after another.

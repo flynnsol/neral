@@ -7,6 +7,7 @@ Fix surviving findings and re-check them, up to a round cap.
 - Run only when the verdict is `CHANGES NEEDED`.
 - Run on `PASS WITH NOTES` only if the user asks to fix the notes.
 - Otherwise skip this step and return the report.
+- Never run in staged mode (see [SKILL.md](SKILL.md)). Report the findings and stop. The user or engineer fixes them, restages, and asks for a new review.
 
 ## Inputs
 
