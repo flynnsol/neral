@@ -19,7 +19,7 @@ Review a change for bugs before merge. The output is a report that follows `docs
 Follow the steps in order. Each step lives in its own file in this folder.
 
 1. **Context pack**: gather the diff and related context. See [context-pack.md](context-pack.md).
-2. **Deterministic gate**: run the mechanical checks (tests, touches, size limit) before any model pass. See [gate.md](gate.md) (added in a later ticket).
+2. **Deterministic gate**: run tests, linters and type checks before any model pass and pass their output on as hints. See [gate.md](gate.md) (added in a later ticket).
 3. **Parallel lens passes**: launch one `reviewer` per lens in parallel on the context pack. See [passes.md](passes.md) (added in a later ticket).
 4. **Verify, score and report**: launch `verifier` (and `tester` where a finding needs a failing test) on each finding, then score and write the report. See [verify.md](verify.md) and [report.md](report.md) (added in a later ticket).
 5. **Fix loop**: hand confirmed findings to `engineer`, then re-check, up to `fix_loop.max_rounds`. See [fix-loop.md](fix-loop.md) (added in a later ticket).
