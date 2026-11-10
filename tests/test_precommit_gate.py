@@ -18,6 +18,23 @@ class PureFunctionsTest(unittest.TestCase):
         for cmd in ["git status", "echo git commit", "git log --grep commit", "", "gitcommit"]:
             self.assertFalse(gate.parse_command(cmd), cmd)
 
+    def test_wrapped_git_commit_is_detected(self):  # H1
+        for cmd in ["(git commit -m x)", "{ git commit -m x; }", "if true; then git commit -m x; fi",
+                    'bash -c "git commit -m x"', "env git commit", "command git commit",
+                    "sudo git commit", "time git commit", "exec git commit", "nohup git commit",
+                    "sh -c 'cd x && git commit'", "if a; then :; else git commit; fi",
+                    "for f in x; do git commit; done", "env -u X FOO=1 git commit", "sudo -u me git commit",
+                    'git commit -m "a\n\nb"', "cat <<EOF\nhi\nEOF\ngit commit"]:
+            with self.subTest(cmd=cmd):
+                self.assertTrue(gate.parse_command(cmd), cmd)
+
+    def test_mentions_are_not_commands(self):  # H7
+        for cmd in ["cat <<'EOF' > f.sh\ngit commit -m x\nEOF", "cat <<-EOF\n\tgit commit\n\tEOF",
+                    'echo "git commit"', "python3 -c 'import os\ngit commit'",
+                    'echo "notes\ngit commit -m y"', "printf '%s' 'a; git commit'", "# git commit"]:
+            with self.subTest(cmd=cmd):
+                self.assertFalse(gate.parse_command(cmd), cmd)
+
     def test_read_config(self):
         self.assertEqual(gate.read_config(""), (True, "P1"))
         text = "profile: strict\nprecommit:\n  enabled: false\n  block_on: P2\nother: 1\n"
@@ -84,6 +101,22 @@ class DecideRealRepoTest(unittest.TestCase):
         (self.repo / ".neral").mkdir()
         (self.repo / ".neral/config.yml").write_text("precommit:\n  enabled: false\n")
         self.assertIsNone(gate.decide(self.payload(), self.env))
+
+    def test_git_dash_c_checks_target_repo(self):  # H3
+        sub = self.repo / "sub"
+        sub.mkdir()
+        git(sub, "init", "-q")
+        (sub / "b.txt").write_text("b\n")
+        git(sub, "add", "b.txt")
+        self.assertIsNone(gate.decide(self.payload(), self.env))  # cwd repo has nothing staged
+        for cmd in ["git -C sub commit -m x", "git --git-dir=sub/.git --work-tree sub commit"]:
+            self.assertIn("Run neral:review", gate.decide(self.payload(cmd), self.env), cmd)
+        for cmd in ["git -C missing commit", 'git -C "$DIR" commit']:
+            self.assertIn("repo directory", gate.decide(self.payload(cmd), self.env), cmd)
+        out = subprocess.run(["git", "diff", "--cached"], cwd=sub, capture_output=True).stdout
+        (sub / ".git/neral").mkdir()
+        (sub / ".git/neral/review-stamp.json").write_text(stamp(diff_sha256=hashlib.sha256(out).hexdigest()))
+        self.assertIsNone(gate.decide(self.payload("git -C sub commit -m x"), self.env))
 
 class MainTest(unittest.TestCase):
     def run_hook(self, stdin):
