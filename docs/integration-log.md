@@ -36,6 +36,22 @@ H1 to H5 came from the pipeline run on commit 7e861f2; H6 and H7 came from live 
 
 The verifier noted that H1 is a guardrail gap, not a sandbox escape: the gate protects against Claude's own accidental commits, so P2 is arguable. It is kept at P1 because the fix is cheap.
 
+## Review of the parser fixes (T35) and the design change
+
+The pipeline review of T35 (three lenses: correctness, security, data-integrity) found more shell forms the parser misses:
+
+- backticks and `$()` inside double quotes
+- `eval`
+- `xargs`
+- `command -p` and `time -p`
+- `bash -o pipefail -c`
+- a `<<` arithmetic shift treated as a heredoc
+- the attached form `git -Cdir`
+
+These are known limits of the best-effort PreToolUse layer, not security holes: enforcement moved to a git pre-commit hook (decision D3), which git runs for every commit form. The PreToolUse hook stays as an early, friendly deny. See `docs/review-stamp.md`, "Enforcement layers".
+
+The data-integrity lens also found a stamp-path mismatch in linked worktrees: `.git/neral/review-stamp.json` breaks where `.git` is a file. T40 fixed the docs to use `git rev-parse --git-path neral/review-stamp.json`.
+
 ## Gaps found and what to do
 
 | # | Gap | Action | Status |
@@ -48,3 +64,4 @@ The verifier noted that H1 is a guardrail gap, not a sandbox escape: the gate pr
 | 6 | One agent stalled when a trim edit was refused and left uncommitted work | Orchestrator finishes the commit; keep tickets under the size limit | Open |
 | 7 | Agents use an Opus co-author trailer when the brief asks for Sonnet | Decide on one attribution rule; not a plugin defect | Open |
 | 8 | The learnings flow was not exercised | Cover it in a later run | Open |
+| 9 | Parser-based enforcement cannot be complete | Enforce in a git pre-commit hook (T36, T39) | Open |

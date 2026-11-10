@@ -4,9 +4,13 @@ The review stamp records that the exact staged diff was reviewed. The pre-commit
 
 ## Location
 
-`.git/neral/review-stamp.json`
+The path printed by:
 
-The stamp lives inside `.git`, so it is never committed.
+```sh
+git rev-parse --git-path neral/review-stamp.json
+```
+
+Write and read the stamp at that path, and create its parent directory if it is missing. Do not hard-code `.git/neral/review-stamp.json`: in a linked worktree `.git` is a file, not a directory, and `--git-path` resolves to the right git directory. The stamp lives inside the git directory, so it is never committed.
 
 ## Fields
 
@@ -52,13 +56,22 @@ Severity order is P0 (worst), P1, P2, P3. With `block_on: P1`, a stamp with `wor
 }
 ```
 
+## Enforcement layers
+
+Two layers check the stamp:
+
+1. **Git pre-commit hook** (`hooks/git_pre_commit.py`, installed with `/neral:config precommit install`). Git runs it for every commit form: `git commit -a`, `git commit <paths>`, `git add` chained with `git commit`, wrapper scripts, and commits typed in a terminal. Once installed, this is the layer that enforces the stamp.
+2. **Claude Code PreToolUse hook** (`hooks/precommit_gate.py`). An early, friendly deny before Claude's shell command runs. It parses the shell text best-effort and can miss exotic forms, so it is not the enforcement layer.
+
+`git commit --no-verify` skips the git pre-commit hook. The PreToolUse hook may still catch it when Claude runs the command, but a terminal commit with `--no-verify` is not checked.
+
 ## Bypasses
 
 The gate allows the commit without checking the stamp when any of these hold:
 
 | Bypass | Condition |
 |--------|-----------|
-| Agent worktree | The current working directory is inside `.claude/worktrees/` |
+| Agent worktree | The repository toplevel (`git rev-parse --show-toplevel`) is inside `.claude/worktrees/` |
 | Environment | `NERAL_REVIEW=off` is set |
 | Config | `precommit.enabled: false` in `.neral/config.yml` |
 | Nothing staged | `git diff --cached` is empty |

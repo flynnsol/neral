@@ -68,7 +68,7 @@ Write the stamp only in staged mode. Never write it in a branch, PR or ticket re
 
 1. At the start of the review, record the staged-diff hash: the first field of `git diff --cached | sha256sum`.
 2. After the review finishes (report written), run `git diff --cached | sha256sum` again. If the hash differs from the one at the start, the staged diff changed mid-review: do not write a stamp, and tell the user the review is stale and must be re-run.
-3. Create `.git/neral/` if it is missing, then write `.git/neral/review-stamp.json` with all 7 fields:
+3. Get the stamp path with `git rev-parse --git-path neral/review-stamp.json` (do not hard-code `.git/neral/`: in a linked worktree `.git` is a file). Create its parent directory if it is missing, then write the stamp at that path with all 7 fields:
 
 | Field | Value |
 |---|---|
