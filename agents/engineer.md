@@ -33,6 +33,8 @@ Work test-first:
 - Make exactly one commit. Do not merge or push. Work only in the worktree you were given.
 - Never read or write the Engram vault or any notes vault. Only the orchestrator changes ticket status.
 - Run every Acceptance check and report the results honestly, including failures.
+- Run git as plain separate Bash commands: one git command per call, no chained git commands (`&&`, `;`, pipes), and no inline scripts or heredocs whose text mentions git. Chained or complex commands are refused inside worktrees.
+- If a tool call is refused, stop and report exactly what was refused. Do not work around it.
 
 ## Fix briefs
 

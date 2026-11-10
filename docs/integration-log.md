@@ -11,7 +11,9 @@ Run on 2026-11-09 with Neral installed from this repo and the Engram vault drivi
 | `neral:review` on T33, quiet lenses (correctness, security) | 1 finding (P1, install command); the `verifier` REFUTED it with `claude plugin install --help` output; verdict PASS |
 | `neral:review` on hook code 7e861f2, quiet lenses (correctness, security, data-integrity) | 8 raw findings, 5 after dedupe; 2 P1 confirmed by `verifier` and by `tester` repro tests |
 
-## Findings on the hook code (commit 7e861f2)
+## Findings on the hook code
+
+H1 to H5 came from the pipeline run on commit 7e861f2; H6 and H7 came from live use of the gate.
 
 | ID | Sev | Claim | Verdict |
 |---|---|---|---|
@@ -36,13 +38,13 @@ The verifier noted that H1 is a guardrail gap, not a sandbox escape: the gate pr
 
 ## Gaps found and what to do
 
-| # | Gap | Action |
-|---|---|---|
-| 1 | Hook bypasses and false positives H1 to H7 (above) | Fix in T35 and T36 |
-| 2 | `engram:work` reviews with a single `reviewer` agent, not the `neral:review` pipeline | Add a rule so Claude runs `neral:review` after a ticket reaches review (T23) |
-| 3 | Six lens passes on a 3-line docs diff is wasteful | Scale lenses to the diff: docs-only changes run `correctness` only (T23) |
-| 4 | Reviewers lack environment facts (the install-flag false positive) | Include `claude plugin validate` output and CLI help checks in gate hints (T23) |
-| 5 | Worktree agents hit refusals on chained git commands and inline scripts that mention git | Tell `engineer` to run git as plain separate commands (T23) |
-| 6 | One agent stalled when a trim edit was refused and left uncommitted work | Orchestrator finishes the commit; keep tickets under the size limit |
-| 7 | Agents use an Opus co-author trailer when the brief asks for Sonnet | Decide on one attribution rule; not a plugin defect |
-| 8 | The learnings flow was not exercised | Cover it in a later run |
+| # | Gap | Action | Status |
+|---|---|---|---|
+| 1 | Hook bypasses and false positives H1 to H7 (above) | Fix in T35 and T36 | Open |
+| 2 | `engram:work` reviews with a single `reviewer` agent, not the `neral:review` pipeline | Add a rule so Claude runs `neral:review` after a ticket reaches review (T23) | Fixed in T23 (`skills/review/SKILL.md`, "With a ticket workflow") |
+| 3 | Six lens passes on a 3-line docs diff is wasteful | Scale lenses to the diff: docs-only changes run `correctness` only (T23) | Fixed in T23 (`skills/review/passes.md`, "Scale to the diff") |
+| 4 | Reviewers lack environment facts (the install-flag false positive) | Include `claude plugin validate` output and CLI help checks in gate hints (T23) | Fixed in T23 (`skills/review/gate.md`) |
+| 5 | Worktree agents hit refusals on chained git commands and inline scripts that mention git | Tell `engineer` to run git as plain separate commands (T23) | Fixed in T23 (`agents/engineer.md`) |
+| 6 | One agent stalled when a trim edit was refused and left uncommitted work | Orchestrator finishes the commit; keep tickets under the size limit | Open |
+| 7 | Agents use an Opus co-author trailer when the brief asks for Sonnet | Decide on one attribution rule; not a plugin defect | Open |
+| 8 | The learnings flow was not exercised | Cover it in a later run | Open |

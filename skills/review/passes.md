@@ -18,6 +18,16 @@ The six lenses are `correctness`, `security`, `data-integrity`, `tests`, `perfor
 
 In staged mode (see [SKILL.md](SKILL.md)), the enabled set comes from `precommit.lenses` and the profile from `precommit.profile`, not the top-level `lenses` and `profile` keys. Defaults: lenses `correctness`, `security`, `data-integrity`; profile `quiet`.
 
+### Scale to the diff
+
+With profile `quiet` or `standard`, cut the lens set to fit small changes:
+
+- **Docs-only**: when every changed file is documentation (`*.md` or under `docs/`, with no code or config), run only the `correctness` lens.
+- **Tiny diff**: when the whole diff is under 20 changed lines in 1 file, run `correctness` plus any enabled lens whose subject the diff clearly touches: `security` for auth, input handling or secrets; `data-integrity` for schemas, migrations or serialization.
+- Profile `strict` ignores this rule and always runs every enabled lens.
+
+Record the lenses skipped by this rule in the lens note of the output.
+
 ## Launch
 
 Launch ONE `reviewer` subagent per lens, all in a SINGLE message with several Agent calls, so they run in parallel. Never launch them one after another.

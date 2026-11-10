@@ -6,6 +6,8 @@ Run deterministic tools on the change and pass their output to the reviewers as 
 
 1. **Tests.** Use `test_command` from `.neral/config.yml` if set. Otherwise detect one from the repo: `package.json` scripts (`test`), `Makefile` (`test` target), `pyproject.toml` (pytest), `Cargo.toml` (`cargo test`), or `python3 -m unittest discover`. Run it once.
 2. **Linters and type checkers already configured in the repo** (for example ruff, eslint, clippy, tsc, mypy, shellcheck). Detect them from config files or scripts. Do not run a tool the repo does not configure. Limit to the changed files where the tool supports it (`ruff check <files>`); otherwise run it on the project.
+3. **Plugin validation.** When the repo has a `.claude-plugin/` folder, run `claude plugin validate .` and pass its output as a hint.
+4. **Environment facts.** When the change makes claims about external CLI flags, subcommands or versions (for example an install command in a README), run that tool's own `--help` (or `--version`) for the subcommand involved and pass the output as a hint. Reviewers then check a disputed flag against real help text instead of memory, which avoids false positives such as disputing a flag that exists.
 
 ## Rules
 

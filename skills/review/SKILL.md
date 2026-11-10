@@ -35,6 +35,13 @@ Use staged mode when the user or the pre-commit gate asks to review staged chang
 - **Verification**: runs as normal (step 4).
 - **Stamp**: the review ends by writing the review stamp `.git/neral/review-stamp.json`. See [report.md](report.md) (Stamp section) and `docs/review-stamp.md`.
 
+## With a ticket workflow
+
+When a ticket reaches review in a ticket workflow (for example Engram's work skill), run this pipeline on the ticket's diff instead of a single `reviewer`:
+
+- Pass the ticket text, its `touches` and its Acceptance checks into the context pack, so the report's checks run against them.
+- Use the `standard` profile for ticket diffs. The `precommit` settings apply only in staged mode.
+
 ## References
 
 - `docs/finding-schema.md`: finding record and report format.
