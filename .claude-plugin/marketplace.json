@@ -6,7 +6,7 @@
     {
       "name": "neral",
       "source": "./",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline"
     }
   ]

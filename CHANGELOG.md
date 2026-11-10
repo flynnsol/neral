@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-10
+
+### Changed
+
+- The pre-commit gate is opt-in per repo: the Claude Code hook no longer gates repos that have neither `.neral/config.yml` nor the Neral git hook.
+
+### Added
+
+- `/neral:config init` offers to install the git hook, and reports the hook status on an existing config.
+
+### Known limits
+
+- The Claude Code hook's opt-in check can miss a target opted in only by its own `.neral/config.yml` when the commit uses `--git-dir` without `--work-tree`.
+- Inline `GIT_DIR=` and `GIT_WORK_TREE=` assignments in the commit command are not followed by the Claude Code hook.
+- The opt-in probe needs git 2.31 or newer; on older git the Claude Code hook treats every repo as opted in.
+- The git hook is the enforcing layer wherever it is installed.
+
 ## [0.1.0] - 2026-11-10
 
 ### Added

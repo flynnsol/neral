@@ -74,12 +74,15 @@ Two layers check the stamp:
 
 `git commit --no-verify` skips the git pre-commit hook. The PreToolUse hook may still catch it when Claude runs the command, but a terminal commit with `--no-verify` is not checked.
 
+Installing the plugin alone does not gate any repo. The gate is opt-in per repo: a repo is gated when it has `.neral/config.yml` (without `precommit.enabled: false`) or the Neral git hook stub (marker line `# neral-git-hook`) is installed. The plugin cannot write to a repo's `.git/hooks`, so the git hook is installed once per repo and once per fresh clone, with `/neral:config init` or `/neral:config precommit install`.
+
 ## Bypasses
 
 The gate allows the commit without checking the stamp when any of these hold:
 
 | Bypass | Condition |
 |--------|-----------|
+| Repo not opted in | No `.neral/config.yml` and no Neral git hook stub. The Claude Code hook checks this; the git hook only runs where it is installed |
 | Agent worktree | The repository toplevel (`git rev-parse --show-toplevel`) is inside `.claude/worktrees/` |
 | Environment | `NERAL_REVIEW=off` is set |
 | Config | `precommit.enabled: false` in `.neral/config.yml` |

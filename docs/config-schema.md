@@ -43,6 +43,8 @@ Settings for the pre-commit review gate. The gate checks the review stamp descri
 | `precommit.lenses` | list of strings | `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability` | `correctness`, `security`, `data-integrity` |
 | `precommit.block_on` | string | `P0`, `P1`, `P2` | `P1` |
 
+`enabled`: the default stays `true`, but the gate only applies in repos that opted in, meaning a `.neral/config.yml` is present or the Neral git hook is installed (`/neral:config precommit install`). A repo with neither is never gated. `enabled: false` turns the gate off even when the git hook stub is installed.
+
 `block_on`: the commit is denied when a surviving finding at this severity or worse exists, or a check fails. `precommit.profile` and `precommit.lenses` apply only to the pre-commit review; the top-level `profile` and `lenses` are unchanged.
 
 ### `path_instructions` entry

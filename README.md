@@ -107,6 +107,22 @@ A commit needs a valid review stamp: a staged-mode review of the exact staged di
 | Git pre-commit hook | Installed with `/neral:config precommit install`. Git runs it for every commit form, including `commit -a`, commits with paths, chained `add` and `commit`, and terminal commits. This is the layer that enforces the stamp. |
 | Claude Code hook | A `PreToolUse` hook that denies Claude's `git commit` early, before the command runs. It parses shell text best-effort. |
 
+### When the gate is on
+
+The gate is opt-in per repo. A repo is gated only when one of these holds:
+
+- it has `.neral/config.yml` that does not set `precommit.enabled: false`, or
+- the Neral git hook stub is installed (`/neral:config precommit install`).
+
+A repo with neither is never gated: the git hook only runs where it is installed, and the Claude Code hook allows commits in repos that have not opted in.
+
+Installing the plugin never installs a git hook. Git hooks live in each repo's `.git/hooks`, and a plugin cannot write there, so install the hook once per repo and once per fresh clone.
+
+- Opt in: run `/neral:config init`, which writes `.neral/config.yml` and offers to install the git hook (on an existing config it reports the hook status and offers the install), or run `/neral:config precommit install`.
+- Opt out: run `/neral:config precommit off`, set `NERAL_REVIEW=off` for a session, or remove the hook with `/neral:config precommit uninstall`.
+
+### Bypasses
+
 - Set `NERAL_REVIEW=off` to bypass the gate for a session, or run `/neral:config precommit off`.
 - `git commit --no-verify` skips the git hook; a terminal commit with it is not checked.
 - Commits by agents in worktrees under `.claude/worktrees/` are skipped.
