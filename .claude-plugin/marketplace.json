@@ -1,6 +1,7 @@
 {
   "name": "neral",
   "owner": { "name": "flynnsol" },
+  "description": "Marketplace offering neral, a Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline.",
   "plugins": [
     {
       "name": "neral",
