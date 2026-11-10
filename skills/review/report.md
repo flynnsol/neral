@@ -9,7 +9,7 @@ Turn the verified findings into the final review report. The format is the examp
 
 ## 1. Severity cutoff
 
-Read `profile` from config (default `standard`). Keep only findings at or above the cutoff:
+Read `profile` from config (default `standard`; in staged mode, `precommit.profile`, default `quiet`). Keep only findings at or above the cutoff:
 
 | Profile | Reported |
 |---|---|
@@ -59,3 +59,25 @@ fix brief F-1:
   test: add or update a test that fails before the fix and passes after
   limits: touch only what the fix needs; no unrelated changes
 ```
+
+In staged mode, fix briefs go to the user or engineer; the fix loop does not run.
+
+## 8. Stamp (staged mode only)
+
+Write the stamp only in staged mode. Never write it in a branch, PR or ticket review. The format is in `docs/review-stamp.md`.
+
+1. At the start of the review, record the staged-diff hash: the first field of `git diff --cached | sha256sum`.
+2. After the review finishes (report written), run `git diff --cached | sha256sum` again. If the hash differs from the one at the start, the staged diff changed mid-review: do not write a stamp, and tell the user the review is stale and must be re-run.
+3. Create `.git/neral/` if it is missing, then write `.git/neral/review-stamp.json` with all 7 fields:
+
+| Field | Value |
+|---|---|
+| `diff_sha256` | the hash from step 2 (64 lowercase hex characters, without the trailing ` -`) |
+| `verdict` | the verdict from section 4: `PASS`, `PASS WITH NOTES` or `CHANGES NEEDED` |
+| `worst_severity` | the worst surviving finding after the profile cutoff (`P0`-`P3`), or `null` if none survive |
+| `profile` | the `precommit.profile` the review ran with |
+| `lenses` | the list of lenses that ran |
+| `reviewed_at` | when the review finished, UTC ISO 8601, e.g. `2026-11-09T14:03:22Z` |
+| `neral_version` | `version` from `.claude-plugin/plugin.json` |
+
+A failed pre-merge check must make the stamp invalid: when any check in section 2 fails, set `verdict` to `CHANGES NEEDED`, even if no finding survives.
