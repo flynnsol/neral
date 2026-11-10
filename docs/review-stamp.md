@@ -16,7 +16,7 @@ Write and read the stamp at that path, and create its parent directory if it is 
 
 | Field | Type | Allowed values | Meaning |
 |-------|------|----------------|---------|
-| `diff_sha256` | string | 64 lowercase hex characters | sha256 of the exact bytes of `git diff --cached` |
+| `diff_sha256` | string | 64 lowercase hex characters | sha256 of the exact bytes of `git diff --cached --no-ext-diff --no-textconv --no-color` |
 | `verdict` | string | `PASS`, `PASS WITH NOTES`, `CHANGES NEEDED` | Review verdict |
 | `worst_severity` | string or null | `P0`, `P1`, `P2`, `P3`, `null` | Worst surviving finding; `null` when none survive |
 | `profile` | string | `quiet`, `standard`, `strict` | Profile the review ran with |
@@ -27,10 +27,10 @@ Write and read the stamp at that path, and create its parent directory if it is 
 ## Hash command
 
 ```sh
-git diff --cached | sha256sum
+git diff --cached --no-ext-diff --no-textconv --no-color | sha256sum
 ```
 
-`diff_sha256` is the first field of this output (the hex digest only, without the trailing ` -`).
+`diff_sha256` is the first field of this output (the hex digest only, without the trailing ` -`). The flags stop repo config (external diff drivers, textconv filters, colour) from changing the bytes, so the review and both hooks hash the same diff. Run this command at the start of the review and again at the end; if the two hashes differ, the staged diff changed mid-review and no stamp is written.
 
 ## Validity rule
 
@@ -40,7 +40,16 @@ A stamp is valid for a commit when all of these hold:
 2. `worst_severity` is not at or above `precommit.block_on` (`null` always passes).
 3. No check failed.
 
-Severity order is P0 (worst), P1, P2, P3. With `block_on: P1`, a stamp with `worst_severity` `P0` or `P1` is invalid; `P2`, `P3` or `null` is valid. Any change to the staged diff after review invalidates the stamp. If the stamp is missing or invalid, the commit is denied.
+Severity order is P0 (worst), P1, P2, P3. With `block_on: P1`, a stamp with `worst_severity` `P0` or `P1` is invalid; `P2`, `P3` or `null` is valid. Any change to the staged diff after review invalidates the stamp.
+
+A stamp is also invalid when any of these hold:
+
+- it is missing `verdict` or `worst_severity`;
+- `verdict` is not `PASS`, `PASS WITH NOTES` or `CHANGES NEEDED`;
+- `worst_severity` is not `null`, `P0`, `P1`, `P2` or `P3`;
+- `diff_sha256` is not exactly 64 lowercase hex characters.
+
+If the stamp is missing or invalid, the commit is denied.
 
 ## Example
 
@@ -75,4 +84,7 @@ The gate allows the commit without checking the stamp when any of these hold:
 | Environment | `NERAL_REVIEW=off` is set |
 | Config | `precommit.enabled: false` in `.neral/config.yml` |
 | Nothing staged | `git diff --cached` is empty |
+| History replay | A merge, cherry-pick, revert or rebase commit: a `MERGE_HEAD`, `CHERRY_PICK_HEAD` or `REVERT_HEAD` file, or a `rebase-merge` or `rebase-apply` directory, is present in the git directory |
+| Git timeout | A git command times out: the hook prints a warning and allows the commit |
+| Missing script | The hook script is missing: the hook prints a warning and allows the commit |
 | Hook error | Any error in the hook fails open: the commit is allowed |

@@ -33,7 +33,7 @@ Use staged mode when the user or the pre-commit gate asks to review staged chang
 - **Settings**: profile, lenses and severity cutoff come from the `precommit` block in `.neral/config.yml`, not the top-level `profile` and `lenses` keys. Defaults: profile `quiet`; lenses `correctness`, `security`, `data-integrity`; `block_on: P1`. `precommit.lenses` is the enabled lens set for step 3, and `precommit.profile` sets the cutoff in step 4.
 - **No fix loop**: staged mode never runs the fix loop (step 5). Report the findings and stop. The user or engineer fixes them, restages, and asks for a new review.
 - **Verification**: runs as normal (step 4).
-- **Stamp**: the review ends by writing the review stamp `.git/neral/review-stamp.json`. See [report.md](report.md) (Stamp section) and `docs/review-stamp.md`.
+- **Stamp**: the review ends by writing the review stamp at the path printed by `git rev-parse --git-path neral/review-stamp.json` (do not hard-code the path: in a linked worktree `.git` is a file). See [report.md](report.md) (Stamp section) and `docs/review-stamp.md`.
 
 ## With a ticket workflow
 
