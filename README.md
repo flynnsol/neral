@@ -7,10 +7,9 @@
 A Claude Code plugin of `engineer`, `reviewer`, `verifier` and `tester` subagents, plus an evidence-first review pipeline.
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status: v0.1.0](https://img.shields.io/badge/status-v0.1.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3-blue.svg)
 
-**Status:** `v0.1.0`, the first release.
+See the [CHANGELOG](CHANGELOG.md) for the current version and release notes.
 
 ## Description
 
