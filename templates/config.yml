@@ -1,0 +1,47 @@
+# .neral/config.yml - human-authored Neral configuration.
+# Every key is optional. Values below are the defaults.
+# Precedence: this file wins over .neral/learnings.md.
+
+# Review strictness: quiet | standard | strict
+profile: standard
+
+# Extra instructions applied to files matching a glob.
+# Each entry needs `path` (glob) and `instructions` (plain language).
+path_instructions: []
+# path_instructions:
+#   - path: "src/api/**"
+#     instructions: "Every handler must validate its input and return typed errors."
+
+# Plain-language pass/fail checks run on every review.
+# Each entry needs `name` and `instructions`.
+custom_checks: []
+# custom_checks:
+#   - name: no-todo-comments
+#     instructions: "Fail if the change adds a TODO or FIXME comment without a ticket id."
+
+# Globs excluded from review: lock files, generated code, minified bundles.
+ignore:
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/pnpm-lock.yaml"
+  - "**/poetry.lock"
+  - "**/Cargo.lock"
+  - "**/go.sum"
+  - "**/*.generated.*"
+  - "**/generated/**"
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "**/*.map"
+
+# Command that runs the test suite (optional; omit to leave unset).
+# test_command: "npm test"
+
+# Which lenses run. Omit to run all six:
+# correctness, security, data-integrity, tests, performance, maintainability
+# lenses:
+#   - correctness
+#   - security
+
+fix_loop:
+  # Maximum fix-and-recheck rounds (integer, default 3).
+  max_rounds: 3
