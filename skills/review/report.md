@@ -25,7 +25,7 @@ Each check is `pass` or `fail: <reason>`.
 
 - **Ticket Acceptance**: run each Acceptance check from the ticket. Fail if any fails. No ticket: skip and write `skipped (no ticket)`.
 - **Touches**: every changed file is within the ticket's declared touches. Fail and name the undeclared files. No ticket: skip.
-- **Size limit (200 lines, 5 files)**: pass only if the change is under 200 changed lines and under 5 files; otherwise fail with the actual numbers.
+- **Size limit (200 lines, 5 files)**: pass only if the change is under 200 changed lines and at most 5 files; otherwise fail with the actual numbers.
 - **Custom checks**: for each `custom_checks` entry, judge its `instructions` against the diff. Report `pass` or `fail: <reason>`, with the entry `name` as the check name.
 
 ## 3. Merge-risk score
