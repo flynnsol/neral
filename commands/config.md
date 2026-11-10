@@ -1,7 +1,7 @@
 ---
 description: Show or change Neral review settings in .neral/config.yml and manage learned rules
-argument-hint: [profile <quiet|standard|strict> | rule "<glob>: <text>" | check "<rule>" | ignore <glob> | lenses <list> | test <cmd> | rounds <n> | precommit <on|off> | precommit profile <quiet|standard|strict> | precommit lenses <list> | precommit block <P0|P1|P2> | learnings | init | free-form request]
-allowed-tools: Read, Edit, Write, Glob, Grep, Bash(mkdir:*), Bash(diff:*), Bash(git ls-files:*)
+argument-hint: [profile <quiet|standard|strict> | rule "<glob>: <text>" | check "<rule>" | ignore <glob> | lenses <list> | test <cmd> | rounds <n> | precommit <on|off> | precommit profile <quiet|standard|strict> | precommit lenses <list> | precommit block <P0|P1|P2> | precommit install | precommit uninstall | learnings | init | free-form request]
+allowed-tools: Read, Edit, Write, Glob, Grep, Bash(mkdir:*), Bash(diff:*), Bash(git ls-files:*), Bash(python3:*)
 ---
 
 # /neral:config
@@ -29,6 +29,8 @@ Match the first word. If nothing matches and there are arguments, treat them as 
 | `precommit profile <quiet\|standard\|strict>` | Set `precommit.profile` |
 | `precommit lenses <list>` | Set `precommit.lenses` (comma or space separated) |
 | `precommit block <P0\|P1\|P2>` | Set `precommit.block_on` |
+| `precommit install` | Install the git pre-commit hook in this repo (see the section below) |
+| `precommit uninstall` | Remove the Neral git pre-commit hook from this repo |
 | `learnings` | Review pending proposals |
 | `init` | Create `.neral/config.yml` |
 
@@ -41,7 +43,7 @@ Read `.neral/config.yml` and `.neral/learnings.md` if present. Print a short tab
 
 Source is `default` (key absent, default from the schema), `.neral/config.yml`, or `learned from .neral/learnings.md` (a learned rule applies to that key and the config does not override it). Summarize long lists by count. End with the number of approved learnings (entries in `learnings.md`) and pending proposals (entries in `.neral/proposed.md`). A missing file counts as 0.
 
-Then show the `precommit` block the same way, one row per key (`precommit.enabled`, `precommit.profile`, `precommit.lenses`, `precommit.block_on`) with its value and source (`default` or `.neral/config.yml`). Below it, one line: `Pre-commit gate: on` when `precommit.enabled` is `true`, otherwise `Pre-commit gate: off`. Add two notes: `NERAL_REVIEW=off` bypasses the gate for a session, and the gate only covers commits Claude makes (commits made outside Claude are not checked). See `docs/review-stamp.md`.
+Then show the `precommit` block the same way, one row per key (`precommit.enabled`, `precommit.profile`, `precommit.lenses`, `precommit.block_on`) with its value and source (`default` or `.neral/config.yml`). Below it, one line: `Pre-commit gate: on` when `precommit.enabled` is `true`, otherwise `Pre-commit gate: off`. Then one more line from `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" status`: `Git hook: installed` or `Git hook: not installed`. Add two notes: `NERAL_REVIEW=off` bypasses the gate for a session, and the Claude Code hook only covers commits Claude makes; install the git hook (`precommit install`) to enforce the review for every commit, terminal commits included. See `docs/review-stamp.md`.
 
 ## Rules for every write
 
@@ -49,7 +51,17 @@ Then show the `precommit` block the same way, one row per key (`precommit.enable
 2. Edit the YAML in place. Preserve every existing comment and the key order. Change only the targeted key. For `precommit` subcommands, change only the matching key inside the `precommit:` block; if the block is missing, add it with only that key. Do not reformat or regenerate the file. A commented-out example (such as `# test_command:`) stays; add the real key beside it.
 3. Show a unified diff of the change and ask for a yes. Write only after an explicit yes.
 4. Create `.neral/` if it is missing. If `config.yml` is missing, create it from `templates/config.yml` as part of the same diff.
-5. Never touch anything outside `.neral/`.
+5. Never touch anything outside `.neral/`, except that `precommit install` and `precommit uninstall` write or remove the repository's `pre-commit` git hook through the installer script.
+
+## `precommit install` and `precommit uninstall`
+
+Run these from the repository root (the repo the user is working in). They do not edit `.neral/config.yml`.
+
+1. `precommit install`: run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" install` and show its output. It writes a small `pre-commit` stub in the repo's hooks directory (respecting `core.hooksPath` and linked worktrees) that runs `hooks/git_pre_commit.py`.
+2. `precommit uninstall`: run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/install_git_hook.py" uninstall` and show its output. It removes the hook only if it is the Neral stub.
+3. Explain after installing: the hook enforces the review stamp for every commit form (`commit -a`, paths, chained `add` and `commit`, terminal commits); `git commit --no-verify` skips it; set `NERAL_REVIEW=off` to bypass it for a session.
+4. A `pre-commit` hook that is not Neral's is never overwritten. If the installer refuses (exit code 2), show its message and the line it suggests for chaining by hand; do not edit the foreign hook yourself.
+5. The stub warns and allows the commit when the plugin script has moved (for example after a plugin update); re-run `precommit install` to refresh the path.
 
 ## `learnings`
 
