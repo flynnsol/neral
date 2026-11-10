@@ -55,6 +55,23 @@ class PureFunctionsTest(unittest.TestCase):
         self.assertIsNotNone(gate.check_stamp(stamp(verdict="CHANGES NEEDED"), DIGEST, "P1"))
         self.assertIsNone(gate.check_stamp(stamp(worst_severity="P1"), DIGEST, "P0"))
 
+    def test_block_on_only_p0_to_p2(self):  # H5
+        for value, want in [("P0", "P0"), ("P2", "P2"), ("P3", "P1"), ("P9", "P1"), ("p0", "P1")]:
+            with self.subTest(value=value):
+                self.assertEqual(gate.read_config(f"precommit:\n  block_on: {value}\n"), (True, want))
+
+    def test_malformed_stamps_are_denied(self):  # H4
+        bad = [json.dumps({"diff_sha256": DIGEST}),
+               json.dumps({"diff_sha256": DIGEST, "verdict": "PASS"}),
+               json.dumps({"diff_sha256": DIGEST, "worst_severity": None}),
+               stamp(verdict="LGTM"), stamp(verdict=None), stamp(worst_severity="P4"),
+               stamp(worst_severity=""), stamp(diff_sha256="A" * 64), stamp(diff_sha256="a" * 63),
+               stamp(diff_sha256=None), stamp(diff_sha256="g" * 64), "[]"]
+        for text in bad:
+            with self.subTest(text=text):
+                self.assertEqual(gate.check_stamp(text, DIGEST, "P1"), gate.REVIEW_MSG)
+                self.assertEqual(gate.check_stamp(text, "A" * 64, "P1"), gate.REVIEW_MSG)
+
 def git(cwd, *args):
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
