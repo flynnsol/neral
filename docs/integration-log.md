@@ -20,6 +20,17 @@ Run on 2026-11-09 with Neral installed from this repo and the Engram vault drivi
 | H3 | P2 | `git -C <dir>` and `cd` targets are ignored, so the wrong repo is checked | Below the quiet cutoff, not verified |
 | H4 | P3 | A stamp missing `verdict` or `worst_severity` is accepted | Below the cutoff, not verified |
 | H5 | P3 | `block_on: P3` is accepted though the schema allows only P0 to P2 | Below the cutoff, not verified |
+| H6 | P1 | `git add f && git commit` in one command: the hook runs before `add` executes, the index is empty, and the gate allows the commit with no stamp | Found by running the gate live, reproduced with `decide()` |
+| H7 | P3 | Any script text containing a line that starts with `git commit` trips the gate, even when no commit runs | Found live, reproduced with `parse_command` |
+
+## Pre-commit gate, observed live
+
+| Case | Result |
+|---|---|
+| `git commit -m "..."` with a change staged earlier and no stamp | Denied with the "run neral:review" instruction |
+| `git add file && git commit ...` as one command | Allowed with no stamp (H6). The first commit of this log landed this way, unreviewed |
+| A script that only mentions `git commit` | Denied (H7) |
+| Commits by `neral:engineer` inside worktrees | Skipped by design |
 
 The verifier noted that H1 is a guardrail gap, not a sandbox escape: the gate protects against Claude's own accidental commits, so P2 is arguable. It is kept at P1 because the fix is cheap.
 
@@ -27,7 +38,7 @@ The verifier noted that H1 is a guardrail gap, not a sandbox escape: the gate pr
 
 | # | Gap | Action |
 |---|---|---|
-| 1 | Hook bypasses H1 to H5 (above) | Fix in T35 and T36 |
+| 1 | Hook bypasses and false positives H1 to H7 (above) | Fix in T35 and T36 |
 | 2 | `engram:work` reviews with a single `reviewer` agent, not the `neral:review` pipeline | Add a rule so Claude runs `neral:review` after a ticket reaches review (T23) |
 | 3 | Six lens passes on a 3-line docs diff is wasteful | Scale lenses to the diff: docs-only changes run `correctness` only (T23) |
 | 4 | Reviewers lack environment facts (the install-flag false positive) | Include `claude plugin validate` output and CLI help checks in gate hints (T23) |
