@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-11
+
 ### Added
 
 - A `PreToolUse` hook for `Edit|Write` (`hooks/worktree_allow.py`): Edit and Write on files inside the repo's linked worktrees under `.claude/worktrees/` or `.worktrees/` no longer prompt. Only acts in repos that opted in to Neral (`.neral/config.yml` in the main checkout, or the Neral git hook). Config, git and agent-instruction files are excluded, and anything that fails a check gets the normal prompt. `NERAL_DEBUG=1` prints the reason for a fall-through to stderr.
