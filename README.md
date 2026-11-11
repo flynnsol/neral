@@ -148,6 +148,19 @@ Installing the plugin never installs a git hook. Git hooks live in each repo's `
 
 Stamp fields and the validity rule are in [docs/review-stamp.md](docs/review-stamp.md).
 
+## Worktree edits
+
+A second `PreToolUse` hook, for `Edit` and `Write`, auto-allows edits to files inside the repo's own linked worktrees, the ones directly under `.claude/worktrees/` or `.worktrees/`. Agents working in a worktree then do not prompt for every edit.
+
+- It only skips the prompt. A matching `deny` or `ask` permission rule still wins.
+- It never allows paths that escape the worktree (`..`, symlinks, hardlinks), worktrees of other repos, or files that can run code or steer agents, such as `.claude/`, `.git*`, `.env*`, `.envrc`, `.github/`, `.vscode/`, `CLAUDE*.md` and `AGENTS.md`. The full list is in `hooks/worktree_allow.py`.
+- Anything it cannot check gets the normal prompt.
+- It only acts in repos that opted in to Neral, the same opt-in as the pre-commit gate: the main checkout has `.neral/config.yml`, or the Neral git hook is installed. Elsewhere it does nothing.
+- To turn it off, do not opt the repo in, or remove the `Edit|Write` entry from `hooks/hooks.json`.
+- Set `NERAL_DEBUG=1` to print why an edit was not auto-allowed to stderr.
+
+If you write your own permission rules instead: in Claude Code rules `//path` is an absolute path and `/path` is relative to the settings file. So `Edit(/home/x/..)` never matches; write `Edit(//home/x/..)`.
+
 ## Using with Engram
 
 Neral works with any ticket that carries a `role`, a `touches` list and Acceptance checks.
