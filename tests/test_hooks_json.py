@@ -32,6 +32,14 @@ class HooksJsonTest(unittest.TestCase):
         self.assertTrue(commands, "no PreToolUse command hook with matcher Bash")
         self.assertTrue(any("precommit_gate.py" in c for c in commands))
 
+    def test_bash_entry_still_present_with_exact_matcher(self):
+        entries = [e for e in self.load()["hooks"]["PreToolUse"] if e.get("matcher") == "Bash"]
+        self.assertEqual(len(entries), 1, "expected exactly one PreToolUse entry with matcher Bash")
+        commands = [h["command"] for h in entries[0]["hooks"] if h.get("type") == "command"]
+        self.assertEqual(len(commands), 1)
+        self.assertIn("precommit_gate.py", commands[0])
+        self.assertNotIn("worktree_allow.py", commands[0])
+
     def test_referenced_script_exists(self):
         for command in self.bash_commands():
             for path in re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}(/[^\s\"']+)", command):

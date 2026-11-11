@@ -1,5 +1,7 @@
-import json, os, subprocess, sys, tempfile, unittest  # noqa: E401
+import importlib.util, io, json, os, subprocess, sys, tempfile, time, types, unittest  # noqa: E401
+from contextlib import redirect_stderr
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "hooks" / "worktree_allow.py"
@@ -16,9 +18,16 @@ def make_repo(path):
     git(path, "commit", "-q", "-m", "init")
     return path
 
-def run(payload, debug=False):
+def load_hook():
+    spec = importlib.util.spec_from_file_location("worktree_allow_under_test", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+def run(payload, debug=False, extra_env=None):
     text = payload if isinstance(payload, str) else json.dumps(payload)
     env = {k: v for k, v in os.environ.items() if k != "NERAL_DEBUG"}
+    env.update(extra_env or {})
     if debug:
         env["NERAL_DEBUG"] = "1"
     proc = subprocess.run([sys.executable, str(SCRIPT)], input=text, capture_output=True, text=True,
@@ -44,8 +53,8 @@ class WorktreeAllowTest(unittest.TestCase):
     def payload(self, path, tool="Edit", cwd=None):
         return {"tool_name": tool, "cwd": str(cwd or self.main), "tool_input": {"file_path": str(path)}}
 
-    def assert_allow(self, path, **kw):
-        out, err = run(self.payload(path, **kw), debug=True)
+    def assert_allow(self, path, extra_env=None, **kw):
+        out, err = run(self.payload(path, **kw), debug=True, extra_env=extra_env)
         self.assertEqual(err, "", f"unexpected stderr for {path}")
         self.assertTrue(out, f"expected allow for {path}")
         hso = json.loads(out)["hookSpecificOutput"]
@@ -53,18 +62,18 @@ class WorktreeAllowTest(unittest.TestCase):
         self.assertEqual(hso["permissionDecision"], "allow")
         self.assertTrue(hso["permissionDecisionReason"])
 
-    def assert_refused(self, payload, why):
+    def assert_refused(self, payload, why, extra_env=None):
         """Fall through for the expected reason, not because of a crash."""
-        out, err = run(payload, debug=True)
+        out, err = run(payload, debug=True, extra_env=extra_env)
         self.assertEqual(out, "", f"expected no stdout for {payload!r}")
         self.assertIn(f"fall through: {why}", err)
         self.assertNotIn("Traceback", err)
         self.assertNotIn("exception", err)
-        quiet_out, quiet_err = run(payload)
+        quiet_out, quiet_err = run(payload, extra_env=extra_env)
         self.assertEqual((quiet_out, quiet_err), ("", ""))
 
-    def assert_silent(self, path, why, **kw):
-        self.assert_refused(self.payload(path, **kw), why)
+    def assert_silent(self, path, why, extra_env=None, **kw):
+        self.assert_refused(self.payload(path, **kw), why, extra_env=extra_env)
 
     def test_allows_inside_worktrees(self):
         for wt in (self.wt, self.cwt):
@@ -217,6 +226,104 @@ class WorktreeAllowTest(unittest.TestCase):
         self.assertEqual(out, "")
         self.assertIn("fall through: exception: ValueError", err)
         self.assertEqual(run(payload), ("", ""))
+
+    def test_inherited_git_env_is_scrubbed(self):
+        other = make_repo(self.base / "other")
+        git(other, "worktree", "add", "-q", ".worktrees/q", "-b", "q")
+        cases = {"other git dir": {"GIT_DIR": str(other / ".git")},
+                 "other git dir and work tree": {"GIT_DIR": str(other / ".git"), "GIT_WORK_TREE": str(other)},
+                 "main git dir": {"GIT_DIR": str(self.main / ".git")},
+                 "main git dir and other work tree": {"GIT_DIR": str(self.main / ".git"),
+                                                       "GIT_WORK_TREE": str(other)},
+                 "work tree only": {"GIT_WORK_TREE": str(other)}}
+        for name, env in cases.items():
+            for cwd in (self.main, self.wt):
+                with self.subTest(case=name, cwd=cwd):
+                    # Another repo's worktree and a path outside any worktree still fall through.
+                    self.assert_silent(other / ".worktrees/q/a.txt", "not under a worktree container",
+                                       extra_env=env, cwd=cwd)
+                    self.assert_silent(self.main / "a.txt", "not under a worktree container",
+                                       extra_env=env, cwd=cwd)
+                    # A legitimate opted-in worktree path is still allowed.
+                    self.assert_allow(self.wt / "a.txt", extra_env=env, cwd=cwd)
+                    self.assert_allow(self.cwt / "new/b.txt", extra_env=env, cwd=cwd)
+
+    def hook_payload(self):
+        return self.payload(self.wt / "a.txt")
+
+    def test_expired_deadline_falls_through(self):
+        hook = load_hook()
+        start = time.monotonic()
+        with self.assertRaises(hook.Skip) as cm:
+            hook.decide(self.hook_payload(), time.monotonic() - 1)
+        self.assertEqual(str(cm.exception), "git deadline passed")
+        self.assertLess(time.monotonic() - start, 1)
+
+    def test_deadline_is_shared_between_git_calls(self):
+        hook = load_hook()
+        clock = [1000.0]
+        real_run = subprocess.run
+
+        def slow_run(*args, **kwargs):
+            proc = real_run(*args, **kwargs)
+            clock[0] += 10  # the first git call "uses up" the whole deadline
+            return proc
+
+        fake_time = types.SimpleNamespace(monotonic=lambda: clock[0])
+        with mock.patch.object(hook, "time", fake_time), mock.patch.object(hook.subprocess, "run", slow_run):
+            with self.assertRaises(hook.Skip) as cm:
+                hook.decide(self.hook_payload(), clock[0] + 5)
+        self.assertEqual(str(cm.exception), "git deadline passed")
+
+    def test_git_gets_the_remaining_deadline_as_timeout(self):
+        hook = load_hook()
+        real_run = subprocess.run
+        timeouts = []
+
+        def spy_run(*args, **kwargs):
+            timeouts.append(kwargs.get("timeout"))
+            return real_run(*args, **kwargs)
+
+        with mock.patch.object(hook.subprocess, "run", spy_run):
+            self.assertIn("linked worktree", hook.decide(self.hook_payload(), time.monotonic() + 3))
+        self.assertEqual(len(timeouts), 2)
+        for t in timeouts:
+            self.assertIsNotNone(t)
+            self.assertTrue(0 < t <= 3, t)
+        self.assertLessEqual(timeouts[1], timeouts[0])
+
+    def test_git_timeout_falls_through_as_exception_on_stderr(self):
+        hook = load_hook()
+
+        def hang(*args, **kwargs):
+            raise subprocess.TimeoutExpired(args[0], kwargs.get("timeout"))
+
+        payload = self.hook_payload()
+        with mock.patch.object(hook.subprocess, "run", hang):
+            with self.assertRaises(subprocess.TimeoutExpired):
+                hook.decide(payload, time.monotonic() + 3)
+            for debug in (True, False):
+                err, out = io.StringIO(), io.StringIO()
+                env = {k: v for k, v in os.environ.items() if k != "NERAL_DEBUG"}
+                if debug:
+                    env["NERAL_DEBUG"] = "1"
+                with mock.patch.dict(os.environ, env, clear=True), \
+                        mock.patch.object(sys, "stdin", io.StringIO(json.dumps(payload))), \
+                        mock.patch.object(sys, "stdout", out), redirect_stderr(err):
+                    self.assertEqual(hook.main(), 0)
+                self.assertEqual(out.getvalue(), "")
+                if debug:
+                    self.assertIn("fall through: exception: TimeoutExpired", err.getvalue())
+                else:
+                    self.assertEqual(err.getvalue(), "")
+
+    def test_outside_the_worktree_check_is_defensive(self):
+        # `if not inside(real, root)` in decide() is a defensive check and unreachable through decide():
+        # probe is real's existing ancestor and root is probe's toplevel, so real is always inside root.
+        hook = load_hook()
+        self.assertTrue(hook.inside(str(self.wt / "a.txt"), str(self.wt)))
+        self.assertFalse(hook.inside(str(self.main / ".worktrees/xy"), str(self.wt)))
+        self.assertFalse(hook.inside(str(self.wt), str(self.wt)))
 
 
 if __name__ == "__main__":
