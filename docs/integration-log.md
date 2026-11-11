@@ -65,3 +65,27 @@ The data-integrity lens also found a stamp-path mismatch in linked worktrees: `.
 | 7 | Agents use an Opus co-author trailer when the brief asks for Sonnet | Decide on one attribution rule; not a plugin defect | Open |
 | 8 | The learnings flow was not exercised | Cover it in a later run | Open |
 | 9 | Parser-based enforcement cannot be complete | Enforce in a git pre-commit hook (T36, T39) | Open |
+
+## PreToolUse input for worktree edits (NER-49)
+
+Source: the Claude Code hooks, hooks guide and permissions docs (read 2026-11-11). This is documentation, not a captured payload: the exact `agent_type` string for a plugin agent is not confirmed.
+
+| Question | Finding |
+|---|---|
+| Does the payload name the calling agent? | Tool events inside a subagent carry `agent_id` and `agent_type`. The docs example is unscoped (`Explore`), so whether a plugin agent reports `neral:engineer` or `engineer` is unconfirmed. |
+| Are paths absolute? | `tool_input.file_path` for `Edit` and `Write` is always absolute (`~` and relative paths are expanded before hooks run). `cwd` is documented only as the working directory, and is absolute in every example. |
+| How does a hook allow? | `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "..."}}`. |
+| Does a hook allow override rules? | No. A matching `deny` rule still blocks and a matching `ask` rule still prompts. In plan mode an allow on a file edit has no effect. |
+| Can a plugin matcher be `Edit\|Write`? | Yes, the same matcher rules apply to a plugin's `hooks/hooks.json`. |
+
+**Rule for NER-50: path only, with containment and exclusions.**
+
+- **Path only.** The allow must not depend on `agent_type`, because its value for plugin agents is unconfirmed and a wrong guess would silently allow nothing. If the value is later confirmed, it can be added as an extra condition.
+- **Where.** Two roots, both found with git and neither taken from a payload path string directly:
+  - The **main repo** is the parent of `git rev-parse --path-format=absolute --git-common-dir`, run in the payload `cwd`. This works whether `cwd` is the main checkout or inside a linked worktree.
+  - The **worktree root** is `git rev-parse --show-toplevel` run in the nearest existing ancestor directory of the realpath of `file_path`. It must be a linked worktree (its git dir differs from its common dir) whose common dir has the same realpath as the main repo's, and it must sit directly under the main repo's `.claude/worktrees/` or `.worktrees/` (Claude Code's own agent worktrees, and the worktree-per-ticket layout some repos use, such as dioxus-atelier-ui). The realpath of that container directory must itself be inside the realpath of the main repo, so a symlinked `.worktrees` pointing elsewhere is refused.
+  - Anchoring on the main repo from `cwd` means the allow works when an agent's `cwd` is the main checkout, and refuses worktrees that belong to some other repo. Anything that does not match falls through to the normal prompt.
+- **Containment.** Take the realpath of `file_path` (for a new file, of its deepest existing ancestor plus the rest) and of the worktree root, and test containment in the worktree root with a separator-aware check (`os.path.commonpath` or `startswith(root + os.sep)`). `..` escapes, sibling names like `.worktrees-evil` and symlinks that leave the root all fall through to the normal prompt.
+- **Exclusions.** A best-effort denylist, not a guarantee. Never auto-allow files that can run code, change permissions or steer agents: `.claude/`, `.git*` (including `.gitmodules` and `.gitattributes`), `.mcp.json`, `.github/`, `.husky/`, `.githooks/`, `.envrc`, `.direnv/`, `.env*`, `.vscode/`, `.idea/`, `.devcontainer/`, `.cargo/`, `.npmrc`, `.yarnrc*`, `.mise.toml`, `.tool-versions`, `.pre-commit-config.yaml`, `CLAUDE*.md` and `AGENTS.md`. Match on any path component, case-insensitively, relative to the worktree root (so the worktree's own location does not trigger them), and against both the lexical path and the realpath: if either matches, fall through. This stops an in-worktree symlink such as `docs -> .claude` from smuggling a write past the list. Tests cover a symlinked directory pointing at `.claude/` and a symlinked file pointing at `.envrc`. Residual risk: a file type missing from the list.
+- **Fail closed.** Emit an allow only when every check positively succeeds. A `git` failure, malformed JSON, a missing or non-string `file_path` or `cwd`, a relative path, a realpath error or any exception exits 0 with no output, so the normal prompt applies. Each case gets a test. Known residual risks: hardlinks (realpath does not detect them) and the window between the check and the write if a symlink is swapped.
+- **Rules still win.** A matching `deny` or `ask` rule overrides the allow, as the table above says.
