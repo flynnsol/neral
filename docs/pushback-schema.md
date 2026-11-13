@@ -79,7 +79,7 @@ Shared contract for the `architect` and `product-manager` planning agents and th
 
 ## How `neral:challenge` merges
 
-Brief; the skill itself is a later ticket.
+Brief; the full procedure is in [skills/challenge/SKILL.md](../skills/challenge/SKILL.md).
 
 1. Drop any challenge without `evidence`.
 2. Dedupe overlapping challenges (same concern from both agents): keep one, at the higher severity, and note both agents.

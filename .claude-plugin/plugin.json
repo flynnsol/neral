@@ -1,7 +1,7 @@
 {
   "name": "neral",
-  "version": "0.1.2",
-  "description": "Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline",
+  "version": "0.2.0",
+  "description": "Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline, plus architect and product-manager agents that challenge a draft plan",
   "author": {
     "name": "flynnsol"
   },

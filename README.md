@@ -4,7 +4,7 @@
 
 # Neral
 
-A Claude Code plugin of `engineer`, `reviewer`, `verifier` and `tester` subagents, plus an evidence-first review pipeline.
+A Claude Code plugin of `engineer`, `reviewer`, `verifier` and `tester` subagents, plus an evidence-first review pipeline, and `architect` and `product-manager` agents that challenge a draft plan before work starts.
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3-blue.svg)
@@ -57,6 +57,8 @@ First run:
 | `reviewer` | sonnet | Read-only (Read, Grep, Glob, Bash) | Reviews a diff through one lens and returns findings as JSON. Never edits files. |
 | `verifier` | sonnet | Read-only (Read, Grep, Glob, Bash) | Tries to refute one finding from the code; returns `CONFIRMED`, `REFUTED` or `INCONCLUSIVE`. |
 | `tester` | sonnet | Read, Grep, Glob, Edit, Write, Bash | Writes failing repro tests or tests for a diff. Touches test files only. |
+| `architect` | opus | Read-only (Read, Grep, Glob, Bash) | Challenges a draft plan on its model, database and view architecture, grounded in the repo. Never edits files. |
+| `product-manager` | opus | Read-only (Read, Grep, Glob, Bash) | Pushes back on unrealistic requirements and timelines, and checks the plan suits sub-agent engineers. Never edits files. |
 
 ## How the review works
 
@@ -85,6 +87,21 @@ Severity levels:
 **Staged mode** reviews `git diff --cached` before a commit. It uses the `precommit` settings (default profile `quiet`, lenses `correctness`, `security`, `data-integrity`), skips the fix loop and ends by writing a review stamp for the pre-commit gate.
 
 The finding and report format is in [docs/finding-schema.md](docs/finding-schema.md).
+
+## Challenging a plan
+
+Ask Claude to challenge a draft plan, epic or feature before it is accepted, and the `neral:challenge` skill runs in the main session:
+
+| Step | What happens |
+| ---- | ------------ |
+| 1. Brief | Passes the plan as text, with the repo path and optional project rules. |
+| 2. Agents | Runs `architect` and `product-manager` in parallel. Both are read-only. |
+| 3. Merge | Drops challenges without evidence, dedupes overlaps and ranks the rest `blocker`, then `major`, then `minor`. |
+| 4. Ask | Puts the ranked list to you as questions, with each agent's assumptions. You decide. |
+
+The agents challenge only when something warrants it. Otherwise they return `no_concerns`, and the skill says so instead of inventing questions. The skill never rewrites the plan.
+
+The report format is in [docs/pushback-schema.md](docs/pushback-schema.md).
 
 ## Configuration
 

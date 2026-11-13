@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-12
+
+### Added
+
+- Two read-only planning agents:
+  - `architect` (opus): challenges a draft plan on its model, database and view architecture, grounded in the repo.
+  - `product-manager` (opus): pushes back on unrealistic requirements and timelines and checks the plan is fit for sub-agent engineers.
+- `neral:challenge` skill: runs both agents in parallel on a draft plan passed as text, merges their evidenced challenges into one ranked list and puts them to the user as questions. It never rewrites the plan.
+- Pushback report schema (`docs/pushback-schema.md`) shared by the planning agents and the skill. Agents challenge only when something warrants it; `no_concerns` is a valid verdict.
+
 ## [0.1.2] - 2026-11-11
 
 ### Added
