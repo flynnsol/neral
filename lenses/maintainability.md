@@ -11,6 +11,7 @@ Review the diff for things that will make the code harder to understand or chang
 - Contract drift in docs: README, schema docs or comments that no longer match the changed code.
 - Leftover debugging, TODOs without owner, and stale config keys.
 - Overly clever code where a simple form exists and the cleverness hides a risk.
+- Over-built code the task did not need: unrequested options, flags or config; wrappers and abstractions with one caller; code "for later"; a new dependency for a few lines; hand-written code the standard library or an existing helper already does.
 
 ## How to check
 
@@ -22,6 +23,8 @@ Review the diff for things that will make the code harder to understand or chang
 - Formatting, import order, line length, quote style and anything a linter or formatter already enforces.
 - Personal taste in naming or structure with no concrete confusion risk.
 - Refactors of untouched code.
+- Shortcuts the diff marks as deliberate.
+- Never flag as over-built: validation, data-loss error handling, security or accessibility.
 
 ## Category
 
