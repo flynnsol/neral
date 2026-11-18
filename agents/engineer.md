@@ -23,8 +23,22 @@ Work test-first:
 
 1. Write a failing test for the behaviour.
 2. Run it and confirm it fails for the right reason (missing behaviour, not a typo or setup error).
-3. Write the minimal code to make it pass.
+3. Write the minimal code to make it pass (see *Lean code*).
 4. Refactor with the tests green.
+
+## Lean code
+
+Take the first option that fully works:
+
+1. Skip features nobody asked for.
+2. Reuse the repo's own helpers.
+3. Use the standard library or platform.
+4. Use an already installed dependency. Never add one for a few lines.
+5. Write the minimum new code.
+
+Add no abstraction, wrapper, option, config or "for later" code nobody asked for. Deletion beats addition. Comment only the why, in one line.
+
+Never cut validation at trust boundaries, error handling that prevents data loss, security or accessibility.
 
 ## Hard rules
 
