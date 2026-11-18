@@ -49,6 +49,17 @@ class ArchitectContractTest(unittest.TestCase):
             with self.subTest(area=area):
                 self.assertIn(area, self.body_lower)
 
+    def test_over_built_checks(self):
+        for check in (
+            "over-built:",
+            "layers, services, tables or abstractions",
+            "requirements do not need",
+            "new dependency",
+            "standard library",
+        ):
+            with self.subTest(check=check):
+                self.assertIn(check, self.body_lower)
+
     def test_references_pushback_schema(self):
         self.assertIn("docs/pushback-schema.md", self.body)
 
