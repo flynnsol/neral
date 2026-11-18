@@ -1,13 +1,13 @@
 {
   "name": "neral",
   "owner": { "name": "flynnsol" },
-  "description": "Marketplace offering neral, a Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline, plus architect and product-manager agents that challenge a draft plan.",
+  "description": "Marketplace offering neral, a Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline, architect and product-manager agents that challenge a draft plan, and sales and marketing agents that plan campaigns.",
   "plugins": [
     {
       "name": "neral",
       "source": "./",
-      "version": "0.2.0",
-      "description": "Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline, plus architect and product-manager agents that challenge a draft plan"
+      "version": "0.3.0",
+      "description": "Claude Code plugin of engineer, reviewer, verifier and tester subagents with an evidence-first review pipeline, architect and product-manager agents that challenge a draft plan, and sales and marketing agents that plan campaigns"
     }
   ]
 }

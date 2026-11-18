@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-17
+
+### Added
+
+- Two read-only campaign agents:
+  - `sales` (opus): researches who is likely to buy a product and returns an audience brief with segments, pitch angles, objections, sales campaigns and `target_first`. Never contacts anyone.
+  - `marketing` (opus): turns an audience brief into a campaign draft (an epic with small tickets) with ready-to-use copy and a short Ideas list. Never publishes or sends anything.
+- `neral:campaign` skill: runs `sales`, then `marketing`, shows the brief and draft, and files the campaign with `engram:plan` (or saves it as Markdown) only on the user's yes.
+- Campaign schema (`docs/campaign-schema.md`) for the audience brief and campaign draft shared by the agents and the skill.
+
+### Changed
+
+- `engineer` follows *Lean code* rules: take the first option that fully works, add no speculative abstraction or config, and never cut validation, error handling, security or accessibility.
+- The `maintainability` lens flags over-built code.
+- `architect` and `product-manager` challenge over-built plans.
+- The fix loop removes each engineer's worktree after its branch merges cleanly, then deletes the branch with `git branch -d`, so an unmerged branch is never deleted.
+
 ## [0.2.0] - 2026-11-12
 
 ### Added

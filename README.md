@@ -4,7 +4,7 @@
 
 # Neral
 
-A Claude Code plugin of `engineer`, `reviewer`, `verifier` and `tester` subagents, plus an evidence-first review pipeline, and `architect` and `product-manager` agents that challenge a draft plan before work starts.
+A Claude Code plugin of `engineer`, `reviewer`, `verifier` and `tester` subagents, plus an evidence-first review pipeline, `architect` and `product-manager` agents that challenge a draft plan before work starts, and `sales` and `marketing` agents that plan a campaign for a product.
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3-blue.svg)
@@ -59,6 +59,10 @@ First run:
 | `tester` | sonnet | Read, Grep, Glob, Edit, Write, Bash | Writes failing repro tests or tests for a diff. Touches test files only. |
 | `architect` | opus | Read-only (Read, Grep, Glob, Bash) | Challenges a draft plan on its model, database and view architecture, grounded in the repo. Never edits files. |
 | `product-manager` | opus | Read-only (Read, Grep, Glob, Bash) | Pushes back on unrealistic requirements and timelines, and checks the plan suits sub-agent engineers. Never edits files. |
+| `sales` | opus | Read-only (Read, Grep, Glob, WebSearch, WebFetch) | Researches who is likely to buy a product; returns an audience brief with segments, pitches, objections and which segments to target first. Never contacts anyone. |
+| `marketing` | opus | Read-only (Read, Grep, Glob, WebSearch, WebFetch) | Turns an audience brief into a campaign draft (an epic with small tickets) and ready-to-use copy. Never publishes or sends anything. |
+
+The `engineer` follows *Lean code* rules: it takes the first option that fully works (skip unasked features, reuse repo helpers, the standard library, installed dependencies, then minimal new code) and adds no speculative abstraction, but never cuts validation, error handling, security or accessibility.
 
 ## How the review works
 
@@ -71,7 +75,7 @@ Ask Claude to review a diff, a branch, a PR or a finished ticket, and the `neral
 | 3. Lens passes | One `reviewer` per lens in parallel: `correctness`, `security`, `data-integrity`, `tests`, `performance`, `maintainability`. Small and docs-only diffs run fewer lenses. |
 | 4. Verify | A `verifier` (and a `tester` where a failing test is needed) tries to refute each finding. Refuted findings are dropped. |
 | 5. Report | Ranked findings P0 to P3, a merge-risk score from 0 to 5 (5 = safest), checks run (Acceptance, touches, size) and a verdict: `PASS`, `PASS WITH NOTES` or `CHANGES NEEDED`. |
-| 6. Fix loop | Confirmed findings go to `engineer` agents as fix briefs, then the new diff is re-checked, up to `fix_loop.max_rounds` (default 3). |
+| 6. Fix loop | Confirmed findings go to `engineer` agents as fix briefs, then the new diff is re-checked, up to `fix_loop.max_rounds` (default 3). After each engineer branch merges cleanly, its worktree is removed and its branch deleted with `git branch -d`. |
 
 After a review, Neral may propose durable rules from confirmed findings or your feedback. Proposals wait in `.neral/proposed.md` until you approve them.
 
@@ -102,6 +106,21 @@ Ask Claude to challenge a draft plan, epic or feature before it is accepted, and
 The agents challenge only when something warrants it. Otherwise they return `no_concerns`, and the skill says so instead of inventing questions. The skill never rewrites the plan.
 
 The report format is in [docs/pushback-schema.md](docs/pushback-schema.md).
+
+## Planning a campaign
+
+Ask Claude who to sell to, for pitches or campaign copy, or to plan a campaign, and the `neral:campaign` skill runs in the main session:
+
+| Step | What happens |
+| ---- | ------------ |
+| 1. Brief | Gathers the product (repo path, README or description) and the goal. |
+| 2. Sales | Runs `sales`, which returns an audience brief. You can adjust which segments to target first. |
+| 3. Marketing | Runs `marketing` on the brief, which returns a campaign draft with copy and a short Ideas list. |
+| 4. File | Only on your yes, files the draft with `engram:plan` as an epic and tickets, or saves it as Markdown if Engram is not installed. |
+
+Both agents are read-only, cite sources for market claims and never invent customers, quotes or numbers. Nothing is filed, published or sent without your yes.
+
+The brief and draft formats are in [docs/campaign-schema.md](docs/campaign-schema.md).
 
 ## Configuration
 
