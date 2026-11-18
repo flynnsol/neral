@@ -20,7 +20,7 @@ Fix surviving findings and re-check them, up to a round cap.
 1. Group the fix briefs by file. Briefs that touch the same files go to the SAME `engineer` in one combined brief, so edits do not collide.
 2. Launch one `engineer` per group, each in its own git worktree. Launch independent groups in parallel, in a SINGLE message with several Agent calls.
 3. Each engineer fixes only its findings, test-first, and makes one commit (see `agents/engineer.md`).
-4. Merge the engineer commits into the working branch. If an engineer reports scope widening (a file outside its touches, or a change too big for one commit), stop and escalate.
+4. Merge the engineer commits into the working branch. If an engineer reports scope widening (a file outside its touches, or a change too big for one commit), stop and escalate. After each engineer branch merges cleanly, run `git worktree remove <path>`, then `git branch -d <branch>` (lower-case `-d`, so an unmerged branch is never deleted). Run git as separate commands. If the merge fails or the engineer escalated, keep the worktree and report its path.
 5. Rescan incrementally. Run steps 1-4 on ONLY the diff between the last reviewed commit and HEAD, plus the callers of what changed. Do not re-review unchanged code. Carry forward findings that are already `CONFIRMED` and still unfixed; do not re-verify them.
 6. Rebuild the report from the carried and new findings, re-run the pre-merge checks, and set the new last reviewed commit to HEAD.
 
