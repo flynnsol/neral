@@ -14,6 +14,11 @@ JUDGEMENT_CHECKS = (
     "cut or deferred",
     "first usable version",
 )
+OVER_BUILT_CHECKS = (
+    "features nobody asked for",
+    "'for later' scope",
+    "smallest one that works",
+)
 
 
 def split_agent(text):
@@ -63,6 +68,11 @@ class ProductManagerContractTest(unittest.TestCase):
 
     def test_judgement_checks(self):
         for check in JUDGEMENT_CHECKS:
+            with self.subTest(check=check):
+                self.assertIn(check, self.body_lower)
+
+    def test_over_built_checks(self):
+        for check in OVER_BUILT_CHECKS:
             with self.subTest(check=check):
                 self.assertIn(check, self.body_lower)
 

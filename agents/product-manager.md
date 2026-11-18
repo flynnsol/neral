@@ -30,8 +30,8 @@ Each breach is a challenge, usually `blocker`. Cite the ticket and the limit.
 - Optimistic estimates and timelines: effort that ignores the code it touches, testing or integration.
 - Missing guardrails: no rollback, validation, limits or failure handling where the plan needs them.
 - Unstated assumptions: decisions the plan relies on but never makes.
-- Scope that should be cut or deferred: work that does not serve the stated goal now.
-- Whether the first usable version is actually small: the earliest ticket set that delivers value to a user.
+- Scope that should be cut or deferred: work that does not serve the stated goal now, features nobody asked for, and 'for later' scope.
+- Whether the first usable version is actually small: the earliest ticket set that delivers value to a user, and the smallest one that works.
 
 ## Method
 
